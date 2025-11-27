@@ -32,8 +32,8 @@ tracing = "0.1"
 
 [dev-dependencies]
 bevy = { version = "0.17", features = ["track_location", "experimental_pbr_pcss"] }
-bevy_trenchbroom = "0.10.0"
-bevy_trenchbroom_avian = "0.10.0"
+bevy_trenchbroom = "0.11.0"
+bevy_trenchbroom_avian = "0.11.0"
 bevy_mod_mipmap_generator = { git = "https://github.com/DGriffin91/bevy_mod_mipmap_generator" }
 avian3d = "0.4.1"
 

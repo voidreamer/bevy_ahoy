@@ -64,8 +64,8 @@ fn main() -> AppExit {
             AhoyPlugin::default(),
             MipmapGeneratorPlugin,
             TrenchBroomPlugins(
-                TrenchBroomConfig::new("bevy_ahoy").default_solid_spawn_hooks(|| {
-                    SpawnHooks::new()
+                TrenchBroomConfig::new("bevy_ahoy").default_solid_scene_hooks(|| {
+                    SceneHooks::new()
                         .convex_collider()
                         .smooth_by_default_angle()
                 }),

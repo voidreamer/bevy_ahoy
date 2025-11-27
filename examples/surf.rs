@@ -73,8 +73,8 @@ fn main() -> AppExit {
             AhoyPlugin::default(),
             MipmapGeneratorPlugin,
             TrenchBroomPlugins(
-                TrenchBroomConfig::new("bevy_ahoy").default_solid_spawn_hooks(|| {
-                    SpawnHooks::new()
+                TrenchBroomConfig::new("bevy_ahoy_surf").default_solid_scene_hooks(|| {
+                    SceneHooks::new()
                         .convex_collider()
                         .smooth_by_default_angle()
                 }),
@@ -138,6 +138,7 @@ struct Player;
 
 #[point_class(base(Transform, Visibility))]
 #[component(on_add = SpawnPlayer::on_add)]
+#[reflect(Component)]
 struct SpawnPlayer;
 
 impl SpawnPlayer {
@@ -247,39 +248,52 @@ impl PlayerInput {
     }
 }
 
-#[point_class(base(Transform, Visibility), model("models/cube.glb"))]
-#[component(on_add = on_add_prop::<Self>)]
-#[derive(Default, Deref)]
-struct Cube {
-    dynamic: bool,
+#[solid_class(base(Transform, Visibility), hooks(SceneHooks::new().smooth_by_default_angle()))]
+#[component(on_add = Self::on_add_prop)]
+struct FuncIllusionary;
+
+impl FuncIllusionary {
+    fn on_add_prop(mut world: DeferredWorld, ctx: HookContext) {
+        if world.is_scene_world() {
+            return;
+        }
+    }
 }
 
-#[point_class(base(Transform, Visibility), model("models/cone.glb"))]
-#[component(on_add = on_add_prop::<Self>)]
-#[derive(Default, Deref)]
-struct Cone {
-    dynamic: bool,
+#[solid_class(base(Transform, Visibility), hooks(SceneHooks::new().smooth_by_default_angle()))]
+#[component(on_add = Self::on_add_prop)]
+struct TriggerTeleport;
+
+impl TriggerTeleport {
+    fn on_add_prop(mut world: DeferredWorld, ctx: HookContext) {
+        if world.is_scene_world() {
+            return;
+        }
+    }
 }
 
-#[point_class(base(Transform, Visibility), model("models/cylinder.glb"))]
-#[component(on_add = on_add_prop::<Self>)]
-#[derive(Default, Deref)]
-struct Cylinder {
-    dynamic: bool,
+#[solid_class(base(Transform, Visibility), hooks(SceneHooks::new().smooth_by_default_angle()))]
+#[component(on_add = Self::on_add_prop)]
+struct TriggerPush;
+
+impl TriggerPush {
+    fn on_add_prop(mut world: DeferredWorld, ctx: HookContext) {
+        if world.is_scene_world() {
+            return;
+        }
+    }
 }
 
-#[point_class(base(Transform, Visibility), model("models/capsule.glb"))]
-#[component(on_add = on_add_prop::<Self>)]
-#[derive(Default, Deref)]
-struct Capsule {
-    dynamic: bool,
-}
+#[solid_class(base(Transform, Visibility), hooks(SceneHooks::new().smooth_by_default_angle()))]
+#[component(on_add = Self::on_add_prop)]
+struct InfoTeleportDestination;
 
-#[point_class(base(Transform, Visibility), model("models/sphere.glb"))]
-#[component(on_add = on_add_prop::<Self>)]
-#[derive(Default, Deref)]
-struct Sphere {
-    dynamic: bool,
+impl InfoTeleportDestination {
+    fn on_add_prop(mut world: DeferredWorld, ctx: HookContext) {
+        if world.is_scene_world() {
+            return;
+        }
+    }
 }
 
 fn on_add_prop<T: QuakeClass + Deref<Target = bool>>(mut world: DeferredWorld, ctx: HookContext) {
