@@ -118,7 +118,7 @@ impl PlayerInput {
                 ),
                 (
                     Action::<RotateCamera>::new(),
-                    Scale::splat(0.1),
+                    Scale::splat(0.04),
                     Bindings::spawn((
                         Spawn(Binding::mouse_motion()),
                         Axial::right_stick()

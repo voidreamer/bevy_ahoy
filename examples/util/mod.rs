@@ -215,7 +215,10 @@ fn tweak_directional_light(
     }
     commands.spawn((
         // The shadow map can only be configured on a freshly spawned light
-        *light,
+        DirectionalLight {
+            shadows_enabled: true,
+            ..*light
+        },
         *transform,
         Tweaked,
         CascadeShadowConfigBuilder {

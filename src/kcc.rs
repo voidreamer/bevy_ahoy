@@ -27,6 +27,7 @@ pub(super) fn plugin(schedule: Interned<dyn ScheduleLabel>) -> impl Fn(&mut App)
     RigidBody = RigidBody::Kinematic,
     Collider = Collider::cylinder(0.7, 1.8),
     CustomPositionIntegration,
+    Transform,
 )]
 #[component(on_add=CharacterController::on_add)]
 pub struct CharacterController {
