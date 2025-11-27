@@ -274,21 +274,12 @@ impl TriggerTeleport {
 
 #[solid_class(base(Transform, Visibility), hooks(SceneHooks::new().smooth_by_default_angle()))]
 #[component(on_add = Self::on_add_prop)]
-struct TriggerPush;
-
-impl TriggerPush {
-    fn on_add_prop(mut world: DeferredWorld, ctx: HookContext) {
-        if world.is_scene_world() {
-            return;
-        }
-    }
+#[derive(Default)]
+struct TriggerPush {
+    speed: f32,
 }
 
-#[solid_class(base(Transform, Visibility), hooks(SceneHooks::new().smooth_by_default_angle()))]
-#[component(on_add = Self::on_add_prop)]
-struct InfoTeleportDestination;
-
-impl InfoTeleportDestination {
+impl TriggerPush {
     fn on_add_prop(mut world: DeferredWorld, ctx: HookContext) {
         if world.is_scene_world() {
             return;
