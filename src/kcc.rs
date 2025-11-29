@@ -6,6 +6,7 @@ use bevy_ecs::{
     entity::EntityHashSet, intern::Interned, lifecycle::HookContext,
     relationship::RelationshipSourceCollection as _, schedule::ScheduleLabel, world::DeferredWorld,
 };
+use bevy_time::Stopwatch;
 use core::time::Duration;
 use std::sync::Arc;
 use tracing::warn;
@@ -84,8 +85,8 @@ impl Default for CharacterController {
             jump_height: 1.5,
             max_air_speed: 0.76,
             unground_speed: 10.0,
-            coyote_time: Duration::from_millis(1000),
-            jump_input_buffer: Duration::from_millis(200),
+            coyote_time: Duration::from_millis(150),
+            jump_input_buffer: Duration::from_millis(150),
             step_from_air: false,
             step_into_air: false,
         }
@@ -157,6 +158,7 @@ pub struct CharacterControllerState {
     pub grounded: Option<MoveHitData>,
     pub crouching: bool,
     pub touching_entities: EntityHashSet,
+    pub last_ground: Stopwatch,
 }
 
 impl CharacterControllerState {
@@ -184,6 +186,7 @@ fn run_kcc(
 ) {
     for (cfg, mut state, mut input, mut transform, mut velocity, cam) in &mut kccs {
         state.touching_entities.clear();
+        state.last_ground.tick(time.delta());
 
         let ctx = Ctx {
             orientation: cam
@@ -242,6 +245,7 @@ fn run_kcc(
 
         if state.grounded.is_some() {
             velocity.y = 0.0;
+            state.last_ground.reset();
         }
         // TODO: check_falling();
     }
@@ -602,11 +606,14 @@ fn handle_jump(
     let Some(jump_time) = input.jumped.clone() else {
         return;
     };
-    if state.grounded.is_none() || jump_time.elapsed() > ctx.cfg.jump_input_buffer {
+    if (state.grounded.is_none() && state.last_ground.elapsed() > ctx.cfg.coyote_time)
+        || jump_time.elapsed() > ctx.cfg.jump_input_buffer
+    {
         return;
     }
     input.jumped = None;
     state.grounded = None;
+    state.last_ground.set_elapsed(ctx.cfg.coyote_time);
 
     // TODO: read ground's jump factor
     let ground_factor = 1.0;
@@ -617,11 +624,7 @@ fn handle_jump(
     // v^2 = g * g * 2.0 * 45 / g
     // v = sqrt( g * 2.0 * 45 )
     let fl_mul = (2.0 * ctx.cfg.gravity * ctx.cfg.jump_height).sqrt();
-    if state.crouching {
-        velocity.y = ground_factor * fl_mul;
-    } else {
-        velocity.y += ground_factor * fl_mul;
-    }
+    velocity.y = ground_factor * fl_mul;
 
     // TODO: Trigger jump event
 }
