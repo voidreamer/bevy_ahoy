@@ -1,4 +1,4 @@
-use crate::{input::RotateCamera, kcc::CharacterControllerState, prelude::*};
+use crate::{CharacterControllerState, input::RotateCamera, prelude::*};
 
 pub(super) fn plugin(app: &mut App) {
     app.add_systems(

@@ -16,21 +16,29 @@ pub mod prelude {
     };
 
     pub use crate::{
-        AhoyPlugin, AhoySystems,
+        AhoyPlugin, AhoySystems, CharacterController,
         camera::{CharacterControllerCamera, CharacterControllerCameraOf},
         input::{Crouch, Jump, Movement, RotateCamera},
-        kcc::CharacterController,
     };
 }
 
-use bevy_ecs::{intern::Interned, schedule::ScheduleLabel};
-
-use crate::prelude::*;
+use crate::{input::AccumulatedInput, prelude::*};
+use avian3d::{
+    character_controller::move_and_slide::MoveHitData,
+    parry::shape::{Capsule, SharedShape},
+};
+use bevy_ecs::{
+    entity::EntityHashSet, intern::Interned, lifecycle::HookContext,
+    relationship::RelationshipSourceCollection as _, schedule::ScheduleLabel, world::DeferredWorld,
+};
+use bevy_time::Stopwatch;
+use core::time::Duration;
+use std::sync::Arc;
 
 pub mod camera;
 mod fixed_update_utils;
 pub mod input;
-pub mod kcc;
+mod kcc;
 
 /// Also requires you to add [`PhysicsPlugins`] and [`EnhancedInputPlugin`] to work properly.
 pub struct AhoyPlugin {
@@ -75,4 +83,156 @@ impl Plugin for AhoyPlugin {
 #[derive(SystemSet, Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub enum AhoySystems {
     MoveCharacters,
+}
+
+#[derive(Component, Clone, Reflect, Debug)]
+#[reflect(Component)]
+#[require(
+    AccumulatedInput,
+    CharacterControllerState,
+    TranslationInterpolation,
+    RigidBody = RigidBody::Kinematic,
+    Collider = Collider::cylinder(0.7, 1.8),
+    CustomPositionIntegration,
+    Transform,
+    SpeculativeMargin::ZERO,
+)]
+#[component(on_add=CharacterController::on_add)]
+pub struct CharacterController {
+    pub crouch_height: f32,
+    pub filter: SpatialQueryFilter,
+    pub standing_view_height: f32,
+    pub crouch_view_height: f32,
+    pub ground_distance: f32,
+    pub min_walk_cos: f32,
+    pub stop_speed: f32,
+    pub friction_hz: f32,
+    pub acceleration_hz: f32,
+    pub air_acceleration_hz: f32,
+    pub gravity: f32,
+    pub step_size: f32,
+    pub crouch_speed_scale: f32,
+    pub speed: f32,
+    pub air_speed: f32,
+    pub move_and_slide: MoveAndSlideConfig,
+    pub max_speed: f32,
+    pub jump_height: f32,
+    pub max_air_speed: f32,
+    pub unground_speed: f32,
+    pub coyote_time: Duration,
+    pub jump_input_buffer: Duration,
+    pub step_from_air: bool,
+    pub step_into_air: bool,
+}
+
+impl Default for CharacterController {
+    fn default() -> Self {
+        Self {
+            crouch_height: 1.3,
+            filter: SpatialQueryFilter::default(),
+            standing_view_height: 1.7,
+            crouch_view_height: 1.2,
+            ground_distance: 0.05,
+            min_walk_cos: 0.766,
+            stop_speed: 2.54,
+            friction_hz: 4.0,
+            acceleration_hz: 5.0,
+            air_acceleration_hz: 12.0,
+            gravity: 20.3,
+            step_size: 1.0,
+            crouch_speed_scale: 1.0 / 3.0,
+            speed: 10.0,
+            air_speed: 1.5,
+            move_and_slide: MoveAndSlideConfig {
+                skin_width: 0.0075,
+                ..default()
+            },
+            max_speed: 100.0,
+            jump_height: 1.5,
+            max_air_speed: 0.76,
+            unground_speed: 10.0,
+            coyote_time: Duration::from_millis(150),
+            jump_input_buffer: Duration::from_millis(150),
+            step_from_air: false,
+            step_into_air: false,
+        }
+    }
+}
+
+impl CharacterController {
+    pub fn on_add(mut world: DeferredWorld, ctx: HookContext) {
+        {
+            let Some(mut kcc) = world.get_mut::<Self>(ctx.entity) else {
+                return;
+            };
+            kcc.filter.excluded_entities.add(ctx.entity);
+        }
+
+        let crouch_height = {
+            let Some(kcc) = world.get::<Self>(ctx.entity) else {
+                return;
+            };
+            kcc.crouch_height
+        };
+
+        let Some(collider) = world.entity(ctx.entity).get::<Collider>().cloned() else {
+            return;
+        };
+        let standing_aabb = collider.aabb(default(), Rotation::default());
+        let standing_height = standing_aabb.max.y - standing_aabb.min.y;
+
+        let Some(mut state) = world.get_mut::<CharacterControllerState>(ctx.entity) else {
+            return;
+        };
+        state.standing_collider = collider.clone();
+
+        let frac = crouch_height / standing_height;
+
+        let mut crouching_collider = Collider::from(SharedShape(Arc::from(
+            state.standing_collider.shape().clone_dyn(),
+        )));
+
+        if crouching_collider.shape().as_capsule().is_some() {
+            let capsule = crouching_collider
+                .shape_mut()
+                .make_mut()
+                .as_capsule_mut()
+                .unwrap();
+            let radius = capsule.radius;
+            let new_height = (crouch_height - radius).max(0.0);
+            *capsule = Capsule::new_y(new_height / 2.0, radius);
+        } else {
+            // note: well-behaved shapes like cylinders and cuboids will not actually subdivide when scaled, yay
+            crouching_collider.set_scale(vec3(1.0, frac, 1.0), 16);
+        }
+        state.crouching_collider = Collider::compound(vec![(
+            Vec3::Y * (crouch_height - standing_height) / 2.0,
+            Rotation::default(),
+            crouching_collider,
+        )]);
+    }
+}
+
+#[derive(Component, Clone, Reflect, Default, Debug)]
+#[reflect(Component)]
+pub struct CharacterControllerState {
+    pub base_velocity: Vec3,
+    #[reflect(ignore)]
+    pub standing_collider: Collider,
+    #[reflect(ignore)]
+    pub crouching_collider: Collider,
+    pub grounded: Option<MoveHitData>,
+    pub crouching: bool,
+    pub touching_entities: EntityHashSet,
+    pub last_ground: Stopwatch,
+}
+
+impl CharacterControllerState {
+    pub fn collider(&self) -> &Collider {
+        if self.crouching {
+            &self.crouching_collider
+        } else {
+            &self.standing_collider
+        }
+    }
 }
