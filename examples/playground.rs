@@ -247,6 +247,7 @@ enum CollisionLayer {
 struct FuncTrain {
     target: String,
     speed: f32,
+    rotation: Vec3,
 }
 
 #[point_class(base(Transform, Visibility))]
@@ -259,10 +260,16 @@ struct PathCorner {
 }
 
 fn move_trains(
-    mut trains: Query<(&GlobalTransform, &mut LinearVelocity, &mut FuncTrain)>,
+    mut trains: Query<(
+        &GlobalTransform,
+        &mut LinearVelocity,
+        &mut AngularVelocity,
+        &mut FuncTrain,
+    )>,
     corners: Query<(&GlobalTransform, &PathCorner)>,
 ) {
-    for (train_transform, mut train_vel, mut train) in &mut trains {
+    for (train_transform, mut train_vel, mut train_ang_vel, mut train) in &mut trains {
+        train_ang_vel.0 = train.rotation;
         if train.target.is_empty() {
             continue;
         }

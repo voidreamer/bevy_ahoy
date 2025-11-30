@@ -33,7 +33,15 @@ fn run_kcc(
     time: Res<Time>,
     move_and_slide: MoveAndSlide,
     // TODO: allow this to be other KCCs
-    colliders: Query<&LinearVelocity, Without<CharacterController>>,
+    colliders: Query<
+        (
+            &LinearVelocity,
+            &AngularVelocity,
+            &ComputedCenterOfMass,
+            &Position,
+        ),
+        Without<CharacterController>,
+    >,
 ) {
     for (cfg, mut state, mut input, mut transform, mut velocity, cam) in &mut kccs {
         state.touching_entities.clear();
@@ -425,7 +433,15 @@ fn update_grounded(
     transform: &Transform,
     velocity: &mut Vec3,
     move_and_slide: &MoveAndSlide,
-    colliders: Query<&LinearVelocity, Without<CharacterController>>,
+    colliders: Query<
+        (
+            &LinearVelocity,
+            &AngularVelocity,
+            &ComputedCenterOfMass,
+            &Position,
+        ),
+        Without<CharacterController>,
+    >,
     state: &mut CharacterControllerState,
     ctx: &Ctx,
 ) {
@@ -472,7 +488,15 @@ fn update_grounded(
 fn set_grounded(
     new_ground: impl Into<Option<MoveHitData>>,
     velocity: &mut Vec3,
-    colliders: Query<&LinearVelocity, Without<CharacterController>>,
+    colliders: Query<
+        (
+            &LinearVelocity,
+            &AngularVelocity,
+            &ComputedCenterOfMass,
+            &Position,
+        ),
+        Without<CharacterController>,
+    >,
     state: &mut CharacterControllerState,
 ) {
     let new_ground = new_ground.into();
@@ -480,13 +504,16 @@ fn set_grounded(
 
     if new_ground.is_none()
         && let Some(old_ground) = old_ground
-        && let Ok(ground_velocity) = colliders.get(old_ground.entity)
+        && let Ok((ground_velocity, ang_vel, com, pos)) = colliders.get(old_ground.entity)
     {
-        state.base_velocity.y = ground_velocity.y;
+        let axis = old_ground.point1 - (com.0 + pos.0);
+        let combined_vel = ground_velocity.0 + ang_vel.0.cross(axis);
+        state.base_velocity.y = combined_vel.y;
     } else if let Some(new_ground) = new_ground
-        && let Ok(ground_velocity) = colliders.get(new_ground.entity)
+        && let Ok((ground_velocity, ang_vel, com, pos)) = colliders.get(new_ground.entity)
     {
-        state.base_velocity = ground_velocity.0;
+        let axis = new_ground.point1 - (com.0 + pos.0);
+        state.base_velocity = ground_velocity.0 + ang_vel.0.cross(axis);
     }
 
     state.grounded = new_ground;
@@ -522,7 +549,15 @@ fn friction(velocity: &mut Vec3, state: &CharacterControllerState, ctx: &Ctx) {
 fn handle_jump(
     velocity: &mut Vec3,
     input: &mut AccumulatedInput,
-    colliders: Query<&LinearVelocity, Without<CharacterController>>,
+    colliders: Query<
+        (
+            &LinearVelocity,
+            &AngularVelocity,
+            &ComputedCenterOfMass,
+            &Position,
+        ),
+        Without<CharacterController>,
+    >,
     state: &mut CharacterControllerState,
     ctx: &Ctx,
 ) {
