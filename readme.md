@@ -99,7 +99,7 @@ fn spawn_player(mut commands: Commands) {
     commands.spawn((
         Camera3d::default(),
         // Enable the optional builtin camera controller
-        CharacterControllerCameraOf(player),
+        CharacterControllerCameraOf::new(player),
     ));
 }
 ```
