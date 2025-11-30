@@ -111,7 +111,7 @@ fn run_kcc(
         finish_gravity(&mut velocity, &ctx);
 
         if state.grounded.is_some() {
-            velocity.y = 0.0;
+            velocity.y = state.base_velocity.y;
             state.last_ground.reset();
         }
         // TODO: check_falling();
@@ -474,27 +474,15 @@ fn set_grounded(
     let new_ground = new_ground.into();
     let old_ground = state.grounded;
 
-    if old_ground.is_none()
-        && let Some(new_ground) = new_ground
-        && let Ok(ground_velocity) = colliders.get(new_ground.entity)
-    {
-        // Subtract ground velocity at instant we hit ground jumping
-        state.base_velocity -= ground_velocity.0;
-        state.base_velocity.y = ground_velocity.y;
-        info!(vel=?state.base_velocity);
-    } else if new_ground.is_none()
+    if new_ground.is_none()
         && let Some(old_ground) = old_ground
         && let Ok(ground_velocity) = colliders.get(old_ground.entity)
     {
-        // Add in ground velocity at instant we started jumping
-        state.base_velocity += ground_velocity.0;
         state.base_velocity.y = ground_velocity.y;
-        info!(vel=?state.base_velocity);
     } else if let Some(new_ground) = new_ground
         && let Ok(ground_velocity) = colliders.get(new_ground.entity)
     {
         state.base_velocity = ground_velocity.0;
-        info!(vel=?state.base_velocity);
     }
 
     state.grounded = new_ground;
