@@ -210,7 +210,8 @@ fn on_add_prop<T: QuakeClass + Deref<Target = bool>>(mut world: DeferredWorld, c
                     .load(GltfAssetLabel::Scene(0).from_asset(T::CLASS_INFO.model_path().unwrap())),
             ),
             ColliderConstructorHierarchy::new(ColliderConstructor::ConvexHullFromMesh)
-                .with_default_layers(CollisionLayers::new(CollisionLayer::Prop, LayerMask::ALL)),
+                .with_default_layers(CollisionLayers::new(CollisionLayer::Prop, LayerMask::ALL))
+                .with_default_density(1000.0),
             if dynamic {
                 RigidBody::Dynamic
             } else {
