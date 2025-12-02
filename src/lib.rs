@@ -83,7 +83,7 @@ impl Plugin for AhoyPlugin {
                 AhoySystems::ApplyForcesToDynamicRigidBodies,
             )
                 .chain()
-                .in_set(PhysicsSystems::First),
+                .before(PhysicsSystems::First),
         )
         .add_plugins((
             camera::plugin,
