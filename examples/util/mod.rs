@@ -16,7 +16,7 @@ use bevy_ahoy::{CharacterControllerState, prelude::*};
 use bevy_ecs::world::FilteredEntityRef;
 use bevy_enhanced_input::prelude::{Release, *};
 use bevy_fix_cursor_unlock_web::{FixPointerUnlockPlugin, ForceUnlockCursor};
-use bevy_framepace::FramepacePlugin;
+use bevy_framepace::{FramepacePlugin, FramepaceSettings, Limiter};
 use bevy_mod_mipmap_generator::{MipmapGeneratorPlugin, generate_mipmaps};
 
 pub(super) struct ExampleUtilPlugin;
@@ -28,6 +28,7 @@ impl Plugin for ExampleUtilPlugin {
             FixPointerUnlockPlugin,
             FramepacePlugin,
         ))
+        .insert_resource(FramepaceSettings::default().with_limiter(Limiter::from_framerate(60.0)))
         .add_systems(Startup, (setup_ui, spawn_crosshair))
         .add_systems(
             Update,

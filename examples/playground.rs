@@ -4,7 +4,7 @@ use bevy::{
     gltf::GltfPlugin,
     input::common_conditions::input_just_pressed,
     prelude::*,
-    window::{CursorGrabMode, CursorOptions},
+    window::{CursorGrabMode, CursorOptions, PresentMode},
 };
 use bevy_ahoy::{PickupHoldConfig, PickupPullConfig, prelude::*};
 use bevy_enhanced_input::prelude::{Press, *};
@@ -19,10 +19,19 @@ mod util;
 fn main() -> AppExit {
     App::new()
         .add_plugins((
-            DefaultPlugins.set(GltfPlugin {
-                use_model_forward_direction: true,
-                ..default()
-            }),
+            DefaultPlugins
+                .set(GltfPlugin {
+                    use_model_forward_direction: true,
+                    ..default()
+                })
+                .set(WindowPlugin {
+                    primary_window: Window {
+                        present_mode: PresentMode::Mailbox,
+                        ..default()
+                    }
+                    .into(),
+                    ..default()
+                }),
             PhysicsPlugins::default(),
             EnhancedInputPlugin,
             AhoyPlugin::default(),
