@@ -6,7 +6,7 @@ use bevy_ecs::{
     system::lifetimeless::{Read, Write},
 };
 use core::fmt::Debug;
-use tracing::{info, warn};
+use tracing::warn;
 
 use crate::{CharacterControllerState, input::AccumulatedInput, prelude::*};
 
@@ -288,7 +288,6 @@ fn handle_crane(time: &Time, move_and_slide: &MoveAndSlide, ctx: &mut CtxItem) -
         ctx.state.crouching = original_crouching;
         return false;
     };
-    ctx.input.craned = None;
 
     // Check wall
     let cast_dir = vel_dir;
@@ -322,7 +321,6 @@ fn handle_crane(time: &Time, move_and_slide: &MoveAndSlide, ctx: &mut CtxItem) -
     let cast_dir = Dir3::NEG_Y;
     let cast_len = up_dist - ctx.cfg.step_size + ctx.cfg.move_and_slide.skin_width;
     let hit = cast_move(cast_dir * cast_len, move_and_slide, ctx);
-    // Unwrap to 0.0 in case Parry wrongly reports no hit :/
     let Some(down_dist) = hit.map(|hit| hit.distance) else {
         ctx.transform.translation = original_position;
         ctx.velocity.0 = original_velocity;
@@ -362,17 +360,15 @@ fn handle_crane(time: &Time, move_and_slide: &MoveAndSlide, ctx: &mut CtxItem) -
         ctx.velocity.0 = original_velocity;
         ctx.state.touching_entities = original_touching_entities;
         ctx.state.crouching = original_crouching;
-        info!(?hit, ?cast_len, ?vel_dir, "f");
         return false;
     };
     ctx.transform.translation += cast_dir * hit.distance;
     depenetrate_character(move_and_slide, ctx);
 
     ctx.state.last_step_up.reset();
+    ctx.input.craned = None;
     // Ensure we don't immediately jump on the surface if crane and jump are bound to the same key
     ctx.input.jumped = None;
-    info!(v=?ctx.velocity.0);
-    info!("SUCCESS");
     true
 }
 
