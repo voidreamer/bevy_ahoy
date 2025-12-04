@@ -173,7 +173,7 @@ impl Default for CharacterController {
             speed: 12.0,
             air_speed: 1.5,
             move_and_slide: MoveAndSlideConfig {
-                skin_width: 0.0075,
+                skin_width: 0.01,
                 ..default()
             },
             max_speed: 100.0,
