@@ -10,7 +10,7 @@ use bevy_ecs::{
 };
 use core::fmt::Debug;
 use core::time::Duration;
-use tracing::warn;
+use tracing::{info, warn};
 
 use crate::{CharacterControllerState, input::AccumulatedInput, prelude::*};
 
@@ -69,18 +69,6 @@ fn run_kcc(
         start_gravity(&time, &mut ctx);
 
         handle_jump(&time, &colliders, &mut ctx);
-
-        /*
-        *  if ctx
-            .input
-            .craned
-            .as_ref()
-            .is_some_and(|c| c.elapsed() < ctx.cfg.jump_input_buffer)
-        {
-            ctx.input.craned = None;
-            step_move(ctx.cfg.crane_height, time, move_and_slide, ctx);
-        }
-        */
 
         handle_mantle(&time, &colliders, &move_and_slide, &mut ctx);
 
@@ -141,17 +129,19 @@ fn ground_move(wish_velocity: Vec3, time: &Time, move_and_slide: &MoveAndSlide, 
     let mut movement = ctx.velocity.0 * time.delta_secs();
     movement.y = 0.0;
 
-    let hit = cast_move(movement, move_and_slide, ctx);
+    if !handle_crane(time, move_and_slide, ctx) {
+        let hit = cast_move(movement, move_and_slide, ctx);
 
-    if hit.is_none() {
-        ctx.transform.translation += movement;
-        ctx.velocity.0 -= ctx.state.base_velocity;
-        depenetrate_character(move_and_slide, ctx);
-        snap_to_ground(move_and_slide, ctx);
-        return;
-    };
+        if hit.is_none() {
+            ctx.transform.translation += movement;
+            ctx.velocity.0 -= ctx.state.base_velocity;
+            depenetrate_character(move_and_slide, ctx);
+            snap_to_ground(move_and_slide, ctx);
+            return;
+        };
 
-    step_move(time, move_and_slide, ctx);
+        step_move(time, move_and_slide, ctx);
+    }
 
     ctx.velocity.0 -= ctx.state.base_velocity;
     snap_to_ground(move_and_slide, ctx);
@@ -181,7 +171,9 @@ fn air_move(wish_velocity: Vec3, time: &Time, move_and_slide: &MoveAndSlide, ctx
 
     ctx.velocity.0 += ctx.state.base_velocity;
 
-    step_move(time, move_and_slide, ctx);
+    if !handle_crane(time, move_and_slide, ctx) {
+        step_move(time, move_and_slide, ctx);
+    }
 
     ctx.velocity.0 -= ctx.state.base_velocity;
 }
@@ -275,6 +267,92 @@ fn step_move(time: &Time, move_and_slide: &MoveAndSlide, ctx: &mut CtxItem) {
         ctx.velocity.y = down_velocity.y;
         ctx.state.last_step_up.reset();
     }
+}
+
+fn handle_crane(time: &Time, move_and_slide: &MoveAndSlide, ctx: &mut CtxItem) -> bool {
+    let Some(crane_time) = ctx.input.craned.clone() else {
+        //info!("a");
+        return false;
+    };
+    if crane_time.elapsed() > ctx.cfg.crane_input_buffer {
+        info!("b");
+        return false;
+    }
+    let original_position = ctx.transform.translation;
+    let original_velocity = ctx.velocity.0;
+    let original_touching_entities = ctx.state.touching_entities.clone();
+    ctx.velocity.y = ctx.state.base_velocity.y;
+    let Ok(vel_dir) = Dir3::new(ctx.velocity.0) else {
+        info!("c");
+        ctx.velocity.0 = original_velocity;
+        return false;
+    };
+    ctx.input.craned = None;
+
+    // step up
+    let cast_dir = Dir3::Y;
+    let cast_len = ctx.cfg.crane_height;
+
+    let hit = cast_move(cast_dir * cast_len, move_and_slide, ctx);
+
+    let up_dist = hit.map(|hit| hit.distance).unwrap_or(cast_len);
+    ctx.transform.translation += cast_dir * up_dist;
+
+    // Move onto ledge
+    ctx.transform.translation += vel_dir * ctx.cfg.min_step_ledge_space;
+
+    // Move down
+    let cast_dir = Dir3::NEG_Y;
+    let cast_len = up_dist - ctx.cfg.step_size;
+    let hit = cast_move(cast_dir * cast_len, move_and_slide, ctx);
+    let Some(hit) = hit else {
+        ctx.transform.translation = original_position;
+        ctx.velocity.0 = original_velocity;
+        info!("d");
+        return false;
+    };
+    let crane_height = up_dist - hit.distance;
+
+    // Validate step back
+    let cast_dir = -vel_dir;
+    let cast_len = ctx.cfg.min_step_ledge_space;
+    let hit = cast_move(cast_dir * cast_len, move_and_slide, ctx);
+    if hit.is_some() {
+        ctx.transform.translation = original_position;
+        ctx.velocity.0 = original_velocity;
+        info!("e");
+        return false;
+    }
+
+    // Okay, we are allowed crane!
+    ctx.transform.translation = original_position;
+
+    // step up
+    ctx.transform.translation.y += crane_height;
+
+    // try to slide from upstairs
+    move_character(time, move_and_slide, ctx);
+
+    let cast_dir = Dir3::NEG_Y;
+    let cast_len = 0.01;
+    let hit = cast_move(cast_dir * cast_len, move_and_slide, ctx);
+
+    // If we either fall or slide down, use the direct move-and-slide instead
+    if !hit.is_some_and(|h| h.normal1.y >= ctx.cfg.min_walk_cos) {
+        ctx.transform.translation = original_position;
+        ctx.velocity.0 = original_velocity;
+        ctx.state.touching_entities = original_touching_entities;
+        info!(?hit);
+        return false;
+    };
+    let hit = hit.unwrap();
+    ctx.transform.translation += cast_dir * hit.distance;
+    depenetrate_character(move_and_slide, ctx);
+
+    //ctx.velocity.y = original_velocity.y;
+    ctx.state.last_step_up.reset();
+    info!("SUCCESS");
+    true
 }
 
 fn move_character(time: &Time, move_and_slide: &MoveAndSlide, ctx: &mut CtxItem) {
