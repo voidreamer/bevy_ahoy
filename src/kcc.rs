@@ -283,7 +283,9 @@ fn handle_crane(time: &Time, move_and_slide: &MoveAndSlide, ctx: &mut CtxItem) -
     let original_touching_entities = ctx.state.touching_entities.clone();
     let original_crouching = ctx.state.crouching;
     ctx.velocity.y = ctx.state.base_velocity.y;
-    ctx.state.crouching = true;
+    if ctx.cfg.auto_crouch_in_crane {
+        ctx.state.crouching = true;
+    }
     let Ok((vel_dir, speed)) = Dir3::new_and_length(ctx.velocity.0) else {
         ctx.velocity.0 = original_velocity;
         ctx.state.crouching = original_crouching;

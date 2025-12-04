@@ -150,6 +150,7 @@ pub struct CharacterController {
     pub min_step_ledge_space: f32,
     pub max_mantle_dist: f32,
     pub min_crane_cos: f32,
+    pub auto_crouch_in_crane: bool,
 }
 
 impl Default for CharacterController {
@@ -189,6 +190,7 @@ impl Default for CharacterController {
             // Measured from navel to second phalanx of index finger.
             // This implies that a crouching character can climb less high, as their center is lower.
             max_mantle_dist: 1.15,
+            auto_crouch_in_crane: false,
         }
     }
 }
