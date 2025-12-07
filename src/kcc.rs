@@ -686,7 +686,7 @@ fn handle_jump(
             return;
         };
         // Don't tac off of ceilings/overhangs
-        if normal.y < 0.0 {
+        if normal.y < -0.01 {
             return;
         }
         let wish_unit = wish_velocity.normalize();
