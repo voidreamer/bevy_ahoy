@@ -53,6 +53,7 @@ fn run_kcc(
     for mut ctx in &mut kccs {
         ctx.state.touching_entities.clear();
         ctx.state.last_ground.tick(time.delta());
+        ctx.state.last_tac.tick(time.delta());
         ctx.state.last_step_up.tick(time.delta());
         ctx.state.last_step_down.tick(time.delta());
 
@@ -70,7 +71,7 @@ fn run_kcc(
         if ctx.state.in_crane.is_some() {
             handle_crane_movement(wish_velocity, &time, &move_and_slide, &mut ctx);
         } else {
-            handle_jump(&time, &colliders, &mut ctx);
+            handle_jump(wish_velocity, &time, &colliders, &move_and_slide, &mut ctx);
 
             handle_mantle(&time, &colliders, &move_and_slide, &mut ctx);
 
@@ -457,6 +458,7 @@ fn update_in_crane(
     ctx.input.craned = None;
     // Ensure we don't immediately jump on the surface if crane and jump are bound to the same key
     ctx.input.jumped = None;
+    ctx.input.tac = None;
 
     ctx.state.in_crane = Some(crane_height);
 }
@@ -481,6 +483,8 @@ fn move_character(time: &Time, move_and_slide: &MoveAndSlide, ctx: &mut CtxItem)
             true
         },
     );
+    let lost_velocity = (ctx.velocity.0 - out.projected_velocity).length();
+    ctx.state.tac_velocity = ctx.state.tac_velocity * 0.99 + lost_velocity;
     ctx.transform.translation = out.position;
     ctx.velocity.0 = out.projected_velocity;
     std::mem::swap(&mut ctx.state.touching_entities, &mut touching_entities);
@@ -559,11 +563,7 @@ fn update_grounded(
 }
 
 #[must_use]
-fn cast_move(
-    movement: Vec3,
-    move_and_slide: &MoveAndSlide,
-    ctx: &mut CtxItem,
-) -> Option<MoveHitData> {
+fn cast_move(movement: Vec3, move_and_slide: &MoveAndSlide, ctx: &CtxItem) -> Option<MoveHitData> {
     move_and_slide.cast_move(
         ctx.state.collider(),
         ctx.transform.translation,
@@ -653,18 +653,80 @@ fn friction(time: &Time, ctx: &mut CtxItem) {
     }
 }
 
-fn handle_jump(time: &Time, colliders: &Query<ColliderComponents>, ctx: &mut CtxItem) {
-    let Some(jump_time) = ctx.input.jumped.clone() else {
-        return;
-    };
-    if (ctx.state.grounded.is_none() && ctx.state.last_ground.elapsed() > ctx.cfg.coyote_time)
-        || jump_time.elapsed() > ctx.cfg.jump_input_buffer
-    {
-        return;
+fn handle_tac(
+    wish_velocity: Vec3,
+    time: &Time,
+    move_and_slide: &MoveAndSlide,
+    ctx: &mut CtxItem,
+) -> Option<Vec3> {
+    let tac_time = ctx.input.tac.clone()?;
+    if tac_time.elapsed() > ctx.cfg.tac_input_buffer {
+        return None;
     }
+    if wish_velocity.length_squared() < 0.1 || ctx.state.last_tac.elapsed() < ctx.cfg.tac_cooldown {
+        return None;
+    }
+    let normal = if let Some(hit) =
+        cast_move(ctx.velocity.0 * time.delta_secs(), move_and_slide, ctx)
+    {
+        hit.normal1
+    } else if let Some(hit) = cast_move(wish_velocity * time.delta_secs(), move_and_slide, ctx) {
+        hit.normal1
+    } else {
+        // No wall to tic tac off of, we're in free-fall.
+        return None;
+    };
+    // Don't tac off of ceilings/overhangs
+    if normal.y < -0.01 {
+        return None;
+    }
+    let wish_unit = wish_velocity.normalize();
+    let wish_dot = wish_unit.dot(normal);
+    if -wish_dot > ctx.cfg.max_tac_cos {
+        return None;
+    }
+    // Cancel velocity that would be lost to move_and_slide if tac is buffered
+    let vel_dot = ctx.velocity.0.dot(normal).min(0.0);
+    ctx.velocity.0 -= vel_dot * normal;
+    let groundedness = ctx.state.tac_velocity.max(vel_dot).min(1.0);
+    ctx.state.tac_velocity = 0.0;
+    let flat_normal = Vec3::new(normal.x, 0.0, normal.z);
+    let tac_wish = wish_unit - (wish_dot.min(0.0) - 1.0) * flat_normal;
+    let tac_dir = (Vec3::Y * ctx.cfg.tac_jump_factor + tac_wish).normalize();
+    Some(tac_dir * groundedness * ctx.cfg.tac_power)
+}
+
+fn handle_jump(
+    wish_velocity: Vec3,
+    time: &Time,
+    colliders: &Query<ColliderComponents>,
+    move_and_slide: &MoveAndSlide,
+    ctx: &mut CtxItem,
+) {
+    // Handle tic tacs when we're in the air beyond coyote-time.
+    let jumpdir =
+        if ctx.state.grounded.is_none() && ctx.state.last_ground.elapsed() > ctx.cfg.coyote_time {
+            if let Some(tac_dir) = handle_tac(wish_velocity, time, move_and_slide, ctx) {
+                tac_dir
+            } else {
+                return;
+            }
+        } else {
+            let Some(jump_time) = ctx.input.jumped.clone() else {
+                return;
+            };
+            if jump_time.elapsed() > ctx.cfg.jump_input_buffer {
+                return;
+            }
+            set_grounded(None, colliders, time, ctx);
+            // set last_ground to coyote time to make it not jump again after jumping ungrounds us
+            ctx.state.last_ground.set_elapsed(ctx.cfg.coyote_time);
+            Vec3::Y
+        };
+    ctx.state.last_tac.reset();
+
     ctx.input.jumped = None;
-    set_grounded(None, colliders, time, ctx);
-    ctx.state.last_ground.set_elapsed(ctx.cfg.coyote_time);
+    ctx.input.tac = None;
 
     // TODO: read ground's jump factor
     let ground_factor = 1.0;
@@ -675,7 +737,7 @@ fn handle_jump(time: &Time, colliders: &Query<ColliderComponents>, ctx: &mut Ctx
     // v^2 = g * g * 2.0 * 45 / g
     // v = sqrt( g * 2.0 * 45 )
     let fl_mul = (2.0 * ctx.cfg.gravity * ctx.cfg.jump_height).sqrt();
-    ctx.velocity.y = ground_factor * fl_mul;
+    ctx.velocity.0 += jumpdir * ground_factor * fl_mul;
     if let Some(crane_input) = ctx.input.craned.as_mut() {
         crane_input
             .tick((ctx.cfg.crane_input_buffer - ctx.cfg.jump_crane_chain_time).max(Duration::ZERO));
