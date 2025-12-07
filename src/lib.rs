@@ -162,7 +162,7 @@ pub struct CharacterController {
     pub crane_speed: f32,
     pub mantle_speed: f32,
     pub min_ledge_grab_space: Cuboid,
-    pub max_ledge_grab_distance: f32,
+    pub climb_wall_distance: f32,
 }
 
 impl Default for CharacterController {
@@ -208,12 +208,11 @@ impl Default for CharacterController {
             crane_input_buffer: Duration::from_millis(200),
             mantle_input_buffer: Duration::from_millis(150),
             crane_height: 1.5,
-            // Measured from navel to second phalanx of index finger.
-            mantle_height: 2.0,
+            mantle_height: 2.3,
             crane_speed: 11.0,
             mantle_speed: 1.0,
             min_ledge_grab_space: Cuboid::new(0.2, 0.1, 0.2),
-            max_ledge_grab_distance: 0.5,
+            climb_wall_distance: 0.5,
         }
     }
 }

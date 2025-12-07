@@ -597,8 +597,9 @@ fn update_mantle_state(
     // Check wall
     let radius = ctx.state.radius();
     let cast_dir = wish_dir;
-    let max_wall_dist = ctx.cfg.max_ledge_grab_distance + radius;
-    let cast_len = max_wall_dist;
+    let hand_to_wall_dist =
+        ctx.cfg.climb_wall_distance + radius + ctx.cfg.move_and_slide.skin_width;
+    let cast_len = hand_to_wall_dist;
     let Some(wall_hit) = cast_move_hands(cast_dir * cast_len, move_and_slide, ctx) else {
         // nothing to move onto
         ctx.velocity.0 = original_velocity;
@@ -613,6 +614,9 @@ fn update_mantle_state(
         return;
     }
 
+    ctx.transform.translation +=
+        cast_dir * wall_hit.distance + wall_normal * ctx.cfg.climb_wall_distance;
+
     // step up
     let cast_dir = Dir3::Y;
     let cast_len = ctx.cfg.mantle_height;
@@ -623,7 +627,7 @@ fn update_mantle_state(
     ctx.transform.translation += cast_dir * up_dist;
 
     // Move onto ledge (penetration explicitly allowed since the ledge can be below a wall)
-    ctx.transform.translation += -wall_normal * max_wall_dist;
+    ctx.transform.translation += -wall_normal * hand_to_wall_dist;
 
     // Move down
     let cast_dir = Dir3::NEG_Y;
@@ -641,8 +645,10 @@ fn update_mantle_state(
 
     let mantle_height = up_dist - down_dist;
 
-    // Okay, we found a potentially mantle!
-    ctx.transform.translation = original_position;
+    // Okay, we found a potential mantle!
+    ctx.transform.translation = original_position
+        + wish_dir * wall_hit.distance
+        + wall_normal * ctx.cfg.climb_wall_distance;
 
     // step up
     ctx.transform.translation.y += mantle_height;
@@ -651,11 +657,8 @@ fn update_mantle_state(
 
     // make sure we have enough space to land
     let cast_dir = -wall_normal;
-    let min_dist = radius + ctx.cfg.min_ledge_grab_space.half_size.z;
-    let cast_len = min_dist + ctx.cfg.max_ledge_grab_distance;
-    if cast_move_hands(cast_dir * cast_len, move_and_slide, ctx)
-        .is_some_and(|h| h.distance < min_dist)
-    {
+    let cast_len = hand_to_wall_dist;
+    if cast_move_hands(cast_dir * cast_len, move_and_slide, ctx).is_some() {
         ctx.transform.translation = original_position;
         ctx.velocity.0 = original_velocity;
         info!("i");
