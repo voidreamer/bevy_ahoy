@@ -382,13 +382,11 @@ fn handle_mantle_movement(
 
     let climb_dir = Vec3::Y;
     // positive when looking at the wall or above it, negative when looking down
-    let mut wish_y = (wish_dir.y + 0.5).min(1.0);
-    if wish_y > 0.0 {
-        wish_y *= ctx.input.last_movement.unwrap_or_default().y.signum();
-    }
+    let wish_y = rescale_climb_cos(wish_dir.y, ctx);
+
     let mut climb_dist = (ctx.cfg.mantle_speed * time.delta_secs() * wish_y).min(mantle_height);
-    if mantle_height - climb_dist > ctx.cfg.mantle_height {
-        climb_dist = mantle_height - ctx.cfg.mantle_height;
+    if mantle_height - climb_dist > ctx.cfg.mantle_height - ctx.cfg.min_ledge_grab_space.size().y {
+        climb_dist = mantle_height - ctx.cfg.mantle_height + ctx.cfg.min_ledge_grab_space.size().y;
     }
 
     let top_hit = cast_move(climb_dir * climb_dist, move_and_slide, ctx);
@@ -398,16 +396,18 @@ fn handle_mantle_movement(
     ctx.velocity.0 = climb_dir * travel_dist / time.delta_secs();
     move_character(time, move_and_slide, ctx);
 
-    *ctx.state.mantle_height_left.as_mut().unwrap() = if top_hit.is_some() {
-        0.0
-    } else {
-        (mantle_height - travel_dist).max(0.0)
-    };
+    *ctx.state.mantle_height_left.as_mut().unwrap() = mantle_height - travel_dist;
     if climb_dist > 0.0 {
         ctx.state.last_step_up.reset();
     } else {
         ctx.state.last_step_down.reset();
     }
+}
+
+fn rescale_climb_cos(cos: f32, ctx: &mut CtxItem) -> f32 {
+    let signum = cos.signum();
+    let cos = cos.abs();
+    ((cos + 0.5) * 2.5).clamp(-1.0, 1.0) * signum
 }
 
 fn update_crane_state(
