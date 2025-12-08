@@ -605,7 +605,7 @@ fn update_mantle_state(
     else {
         return;
     };
-    info!("a");
+    error!("success");
 
     ctx.input.craned = None;
     ctx.input.mantled = None;
@@ -630,6 +630,7 @@ fn available_mantle_height(
         vel_dir
     } else {
         ctx.velocity.0 = original_velocity;
+        info!("a");
         return None;
     };
 
@@ -647,12 +648,14 @@ fn available_mantle_height(
     let Some(wall_hit) = cast_move_hands(cast_dir * cast_len, move_and_slide, ctx) else {
         // nothing to move onto
         ctx.velocity.0 = original_velocity;
+        info!("b");
         return None;
     };
     let wall_normal = vec3(wall_hit.normal1.x, 0.0, wall_hit.normal1.z).normalize_or_zero();
 
     if (-wall_normal).dot(*wish_dir) < ctx.cfg.min_mantle_cos {
         ctx.velocity.0 = original_velocity;
+        info!("c");
         return None;
     }
 
@@ -679,6 +682,7 @@ fn available_mantle_height(
     else {
         ctx.transform.translation = original_position;
         ctx.velocity.0 = original_velocity;
+        info!("d");
         return None;
     };
     ctx.transform.translation += cast_dir * down_dist;
@@ -701,6 +705,7 @@ fn available_mantle_height(
     if cast_move_hands(cast_dir * cast_len, move_and_slide, ctx).is_some() {
         ctx.transform.translation = original_position;
         ctx.velocity.0 = original_velocity;
+        info!("e");
         return None;
     };
     ctx.transform.translation += cast_dir * cast_len;
@@ -713,11 +718,13 @@ fn available_mantle_height(
     let Some(hit) = hit else {
         ctx.transform.translation = original_position;
         ctx.velocity.0 = original_velocity;
+        info!("f");
         return None;
     };
     if hit.normal1.y < ctx.cfg.min_walk_cos {
         ctx.transform.translation = original_position;
         ctx.velocity.0 = original_velocity;
+        info!("g");
         return None;
     }
 
@@ -1036,7 +1043,7 @@ fn handle_jump(
     // v^2 = g * g * 2.0 * 45 / g
     // v = sqrt( g * 2.0 * 45 )
     let fl_mul = (2.0 * ctx.cfg.gravity * ctx.cfg.jump_height).sqrt();
-    ctx.velocity.0 += jumpdir * ground_factor * fl_mul + ctx.state.base_velocity;
+    ctx.velocity.0 += jumpdir * ground_factor * fl_mul + Vec3::Y * ctx.state.base_velocity.y;
     if let Some(crane_input) = ctx.input.craned.as_mut() {
         crane_input
             .tick((ctx.cfg.crane_input_buffer - ctx.cfg.jump_crane_chain_time).max(Duration::ZERO));
