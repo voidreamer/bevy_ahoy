@@ -374,30 +374,24 @@ pub struct Water {
 }
 
 fn update_water(
-    mut objects: Query<(Entity, &Collider, &Position, &Rotation, &mut WaterState)>,
+    mut objects: Query<(Entity, &Position, &mut WaterState)>,
     waters: Query<(&Collider, &Position, &Rotation, &Water)>,
     collisions: Collisions,
 ) {
-    for (object, object_collider, object_position, object_rotation, mut water_state) in &mut objects
-    {
+    for (object, object_position, mut water_state) in &mut objects {
         water_state.level = WaterLevel::None;
         water_state.speed = f32::MAX;
         let waist = **object_position;
-        // HACK: eye height fibbing
-        let eye_height = object_collider.aabb(Vec3::ZERO, Quat::IDENTITY).max.y - 0.2;
-        let eyes = waist + object_rotation * Vec3::Y * eye_height;
         for contact_pair in collisions.collisions_with(object) {
             if let Ok((collider, position, rotation, water)) = waters
                 .get(contact_pair.collider1)
                 .or(waters.get(contact_pair.collider2))
             {
                 water_state.speed = water_state.speed.min(water.speed);
-                let level = if collider.contains_point(*position, *rotation, eyes) {
-                    WaterLevel::Eyes
-                } else if collider.contains_point(*position, *rotation, waist) {
-                    WaterLevel::Waist
+                let level = if collider.contains_point(*position, *rotation, waist) {
+                    WaterLevel::Center
                 } else {
-                    WaterLevel::Feet
+                    WaterLevel::Touching
                 };
                 if level > water_state.level {
                     water_state.level = level;

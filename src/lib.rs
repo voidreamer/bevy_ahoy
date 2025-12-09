@@ -185,7 +185,7 @@ impl Default for CharacterController {
             air_acceleration_hz: 12.0,
             water_acceleration_hz: 12.0,
             gravity: 29.0,
-            water_gravity: 6.0,
+            water_gravity: 2.4,
             step_size: 0.7,
             crouch_speed_scale: 1.0 / 3.0,
             speed: 12.0,
@@ -410,9 +410,8 @@ pub struct WaterState {
 pub enum WaterLevel {
     #[default]
     None,
-    Feet,
-    Waist,
-    Eyes,
+    Touching,
+    Center,
 }
 
 /// Data related to a hit during [`MoveAndSlide::move_and_slide`].

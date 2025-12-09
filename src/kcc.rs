@@ -63,7 +63,7 @@ fn run_kcc(
 
         handle_crouching(&move_and_slide, &mut ctx);
 
-        if ctx.water.level < WaterLevel::Waist {
+        if ctx.water.level <= WaterLevel::Touching {
             // here we'd handle things like spectator, dead, noclip, etc.
             start_gravity(&time, &mut ctx);
         }
@@ -90,7 +90,7 @@ fn run_kcc(
 
             validate_velocity(&mut ctx);
 
-            if ctx.water.level > WaterLevel::Feet {
+            if ctx.water.level > WaterLevel::Touching {
                 water_move(wish_velocity_3d, &time, &move_and_slide, &mut ctx);
             } else if ctx.state.grounded.is_some() {
                 ground_move(wish_velocity, &time, &move_and_slide, &mut ctx);
@@ -102,7 +102,7 @@ fn run_kcc(
         update_grounded(&move_and_slide, &colliders, &time, &mut ctx);
         validate_velocity(&mut ctx);
 
-        if ctx.water.level < WaterLevel::Waist {
+        if ctx.water.level <= WaterLevel::Touching {
             finish_gravity(&time, &mut ctx);
         }
 
@@ -853,7 +853,7 @@ fn update_grounded(
     time: &Time,
     ctx: &mut CtxItem,
 ) {
-    if ctx.water.level > WaterLevel::Feet {
+    if ctx.water.level > WaterLevel::Touching {
         set_grounded(None, colliders, time, ctx);
         return;
     }
@@ -982,14 +982,10 @@ fn friction(time: &Time, ctx: &mut CtxItem) {
 
     let mut drop = 0.0;
     // apply ground friction
-    if ctx.state.grounded.is_some() || ctx.water.level > WaterLevel::Feet {
+    if ctx.state.grounded.is_some() || ctx.water.level > WaterLevel::Touching {
         // TODO: read ground's friction
         let surface_friction = 1.0;
-        let friction = if ctx.water.level > WaterLevel::Feet {
-            ctx.cfg.water_friction_hz * surface_friction
-        } else {
-            ctx.cfg.friction_hz * surface_friction
-        };
+        let friction = ctx.cfg.friction_hz * surface_friction;
         let control = f32::max(speed, ctx.cfg.stop_speed);
         drop += control * friction * time.delta_secs();
     }
