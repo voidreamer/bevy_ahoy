@@ -240,6 +240,8 @@ fn water_accelerate(wish_velocity: Vec3, acceleration_hz: f32, time: &Time, ctx:
     let Ok((wish_dir, wish_speed)) = Dir3::new_and_length(wish_velocity) else {
         return;
     };
+    // Avoid Space + W + Look up to go faster than either alone
+    let wish_speed = wish_speed.min(ctx.cfg.speed);
     let current_speed = ctx.velocity.dot(*wish_dir);
     let add_speed = wish_speed - current_speed;
 
