@@ -428,13 +428,13 @@ fn handle_mantle_movement(
         return;
     };
     let Some((_wall_point, wall_normal)) =
-        closest_wall_normal(ctx.cfg.move_and_slide.skin_width * 2.0, move_and_slide, ctx)
+        closest_wall_normal(ctx.cfg.max_ledge_grab_distance, move_and_slide, ctx)
     else {
         ctx.state.mantle_progress = None;
         return;
     };
     let Some(hit) = cast_move(
-        -wall_normal * ctx.cfg.move_and_slide.skin_width * 2.0,
+        -wall_normal * ctx.cfg.max_ledge_grab_distance,
         move_and_slide,
         ctx,
     ) else {
@@ -704,7 +704,7 @@ fn available_mantle_height(
 
     // Check wall
     let cast_dir = wish_dir;
-    let cast_len = ctx.cfg.move_and_slide.skin_width * 2.0;
+    let cast_len = ctx.cfg.max_ledge_grab_distance;
     let Some(wall_hit) = cast_move(cast_dir * cast_len, move_and_slide, ctx) else {
         // nothing to move onto
         ctx.velocity.0 = original_velocity;
