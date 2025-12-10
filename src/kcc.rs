@@ -975,20 +975,21 @@ fn calculate_platform_movement(
 }
 
 fn friction(time: &Time, ctx: &mut CtxItem) {
-    let speed = ctx.velocity.length();
+    if ctx.state.grounded.is_none() && ctx.water.level <= WaterLevel::Touching {
+        return;
+    }
+    let speed = ctx.velocity.xz().length();
     if speed < 0.001 {
         return;
     }
 
     let mut drop = 0.0;
     // apply ground friction
-    if ctx.state.grounded.is_some() || ctx.water.level > WaterLevel::Touching {
-        // TODO: read ground's friction
-        let surface_friction = 1.0;
-        let friction = ctx.cfg.friction_hz * surface_friction;
-        let control = f32::max(speed, ctx.cfg.stop_speed);
-        drop += control * friction * time.delta_secs();
-    }
+    // TODO: read ground's friction
+    let surface_friction = 1.0;
+    let friction = ctx.cfg.friction_hz * surface_friction;
+    let control = f32::max(speed, ctx.cfg.stop_speed);
+    drop += control * friction * time.delta_secs();
 
     let mut new_speed = (speed - drop).max(0.0);
     if new_speed != speed {
