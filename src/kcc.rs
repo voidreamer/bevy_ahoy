@@ -495,13 +495,11 @@ fn update_crane_state(
     move_and_slide: &MoveAndSlide,
     ctx: &mut CtxItem,
 ) {
-    if ctx.state.mantle_progress.is_none() {
-        let Some(crane_time) = ctx.input.craned.clone() else {
-            return;
-        };
-        if crane_time.elapsed() > ctx.cfg.crane_input_buffer {
-            return;
-        }
+    let Some(crane_time) = ctx.input.craned.clone() else {
+        return;
+    };
+    if crane_time.elapsed() > ctx.cfg.crane_input_buffer {
+        return;
     }
 
     let Some(crane_height) = available_crane_height(wish_velocity, time, move_and_slide, ctx)
