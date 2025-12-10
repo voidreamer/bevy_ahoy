@@ -485,9 +485,7 @@ fn handle_mantle_movement(
 }
 
 fn rescale_climb_cos(cos: f32) -> f32 {
-    let signum = cos.signum();
-    let cos = cos.abs();
-    ((cos + 0.5) * 2.5).clamp(-1.0, 1.0) * signum
+    ((cos + 0.5) * 2.5).clamp(-1.0, 1.0)
 }
 
 fn update_crane_state(
