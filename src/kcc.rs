@@ -978,6 +978,7 @@ fn set_grounded(
     }
 
     ctx.state.grounded = new_ground;
+    ctx.state.mantle_progress = None;
 
     if ctx.state.grounded.is_some() {
         ctx.velocity.y = 0.0;
