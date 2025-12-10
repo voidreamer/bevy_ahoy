@@ -122,6 +122,7 @@ pub enum AhoySystems {
     CustomPositionIntegration,
     Transform,
     SpeculativeMargin::ZERO,
+    CollidingEntities,
 )]
 #[component(on_add=CharacterController::on_add)]
 pub struct CharacterController {

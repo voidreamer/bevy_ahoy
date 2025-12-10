@@ -30,24 +30,14 @@ pub(super) fn plugin(app: &mut App) {
 }
 
 fn update_water(
-    mut objects: Query<(Entity, &Position, &mut WaterState)>,
+    mut objects: Query<(&Position, &mut WaterState, &CollidingEntities)>,
     waters: Query<(&Collider, &Position, &Rotation, &Water)>,
-    collisions: Collisions,
 ) {
-    for (object, object_position, mut water_state) in &mut objects {
+    for (object_position, mut water_state, colliding_entities) in &mut objects {
         water_state.level = WaterLevel::None;
         water_state.speed = f32::MAX;
         let waist = **object_position;
-        for (collider, position, rotation, water) in
-            collisions
-                .collisions_with(object)
-                .filter_map(|contact_pair| {
-                    waters
-                        .get(contact_pair.collider1)
-                        .or(waters.get(contact_pair.collider2))
-                        .ok()
-                })
-        {
+        for (collider, position, rotation, water) in waters.iter_many(colliding_entities.iter()) {
             let level = if collider.contains_point(*position, *rotation, waist) {
                 WaterLevel::Center
             } else {

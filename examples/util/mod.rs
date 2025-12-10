@@ -45,9 +45,7 @@ impl Plugin for ExampleUtilPlugin {
         .insert_resource(DirectionalLightShadowMap { size: 4096 })
         .insert_resource(AmbientLight::NONE)
         .add_systems(Update, turn_sun)
-        .add_input_context::<DebugInput>()
-        // For debug printing
-        .register_required_components::<CharacterController, CollidingEntities>();
+        .add_input_context::<DebugInput>();
     }
 }
 
