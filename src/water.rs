@@ -1,4 +1,4 @@
-use crate::prelude::*;
+use crate::{CharacterControllerState, prelude::*};
 
 #[derive(Component, Default, Copy, Reflect, Clone, Debug)]
 #[reflect(Component)]
@@ -11,8 +11,9 @@ pub struct WaterState {
 pub enum WaterLevel {
     #[default]
     None,
-    Touching,
-    Center,
+    Feet,
+    Waist,
+    Head,
 }
 
 #[derive(Reflect, Component, Default)]
@@ -30,18 +31,33 @@ pub(super) fn plugin(app: &mut App) {
 }
 
 fn update_water(
-    mut objects: Query<(&Position, &mut WaterState, &CollidingEntities)>,
+    mut kccs: Query<(
+        &Position,
+        &CharacterController,
+        &CharacterControllerState,
+        &mut WaterState,
+        &CollidingEntities,
+    )>,
     waters: Query<(&Collider, &Position, &Rotation, &Water)>,
 ) {
-    for (object_position, mut water_state, colliding_entities) in &mut objects {
+    for (kcc_center, cfg, state, mut water_state, colliding_entities) in &mut kccs {
         water_state.level = WaterLevel::None;
         water_state.speed = f32::MAX;
-        let waist = **object_position;
+        let kcc_center = kcc_center.0;
+        let eye_pos = kcc_center
+            + Vec3::Y
+                * if state.crouching {
+                    cfg.crouch_view_height
+                } else {
+                    cfg.standing_view_height
+                };
         for (collider, position, rotation, water) in waters.iter_many(colliding_entities.iter()) {
-            let level = if collider.contains_point(*position, *rotation, waist) {
-                WaterLevel::Center
+            let level = if collider.contains_point(*position, *rotation, eye_pos) {
+                WaterLevel::Head
+            } else if collider.contains_point(*position, *rotation, kcc_center) {
+                WaterLevel::Waist
             } else {
-                WaterLevel::Touching
+                WaterLevel::Feet
             };
 
             water_state.level = level.max(water_state.level);
