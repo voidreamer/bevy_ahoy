@@ -13,7 +13,8 @@ use crate::{CharacterControllerState, MantleProgress, input::AccumulatedInput, p
 
 pub(super) fn plugin(schedule: Interned<dyn ScheduleLabel>) -> impl Fn(&mut App) {
     move |app: &mut App| {
-        app.add_systems(schedule, run_kcc.in_set(AhoySystems::MoveCharacters));
+        app.add_systems(schedule, run_kcc.in_set(AhoySystems::MoveCharacters))
+            .add_systems(Update, spin_cams);
     }
 }
 
@@ -1004,6 +1005,7 @@ fn calculate_platform_movement(
     ) - touch_point;
 
     ctx.state.base_velocity = platform_movement / time.delta_secs();
+    ctx.state.base_angular_velocity = platform.ang_vel.0;
 }
 
 fn friction(time: &Time, ctx: &mut CtxItem) {
@@ -1249,4 +1251,23 @@ fn is_intersecting(move_and_slide: &MoveAndSlide, waters: &Query<Entity>, ctx: &
         },
     );
     intersecting
+}
+
+fn spin_cams(
+    kccs: Query<Ctx>,
+    mut cams: Query<&mut Transform, Without<CharacterController>>,
+    time: Res<Time>,
+) {
+    for ctx in &kccs {
+        if ctx.state.grounded.is_some() {
+            ctx.cam
+                .and_then(|cam| cams.get_mut(cam.get()).ok())
+                .map(|mut cam: Mut<Transform>| {
+                    cam.rotate_axis(
+                        Dir3::Y,
+                        ctx.state.base_angular_velocity.y * time.delta_secs(),
+                    )
+                });
+        }
+    }
 }

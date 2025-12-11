@@ -299,6 +299,7 @@ impl CharacterController {
 pub struct CharacterControllerState {
     pub orientation: Transform,
     pub base_velocity: Vec3,
+    pub base_angular_velocity: Vec3,
     #[reflect(ignore)]
     pub standing_collider: Collider,
     #[reflect(ignore)]
@@ -321,6 +322,7 @@ impl Default for CharacterControllerState {
     fn default() -> Self {
         Self {
             base_velocity: Vec3::ZERO,
+            base_angular_velocity: Vec3::ZERO,
             orientation: Transform::IDENTITY,
             // late initialized
             standing_collider: default(),
