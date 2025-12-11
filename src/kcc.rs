@@ -50,8 +50,6 @@ fn run_kcc(
 ) {
     let mut colliders = colliders.transmute_lens_inner();
     let colliders = colliders.query();
-    let mut cams = cams.transmute_lens_inner();
-    let cams = cams.query();
     let mut waters = waters.transmute_lens_inner();
     let waters = waters.query();
     for mut ctx in &mut kccs {
@@ -76,8 +74,8 @@ fn run_kcc(
             .and_then(|e| Option::<&Transform>::copied(cams.get(e.get()).ok()))
             .unwrap_or(*ctx.transform);
 
-        let wish_velocity = calculate_wish_velocity(&cams, &ctx);
-        let wish_velocity_3d = calculate_3d_wish_velocity(&cams, &ctx);
+        let wish_velocity = calculate_wish_velocity(&ctx);
+        let wish_velocity_3d = calculate_3d_wish_velocity(&ctx);
         update_crane_state(wish_velocity, &time, &move_and_slide, &mut ctx);
         update_mantle_state(wish_velocity, &time, &move_and_slide, &mut ctx);
         if ctx.state.crane_height_left.is_some() {
@@ -1186,7 +1184,7 @@ fn validate_velocity(ctx: &mut CtxItem) {
 }
 
 #[must_use]
-fn calculate_wish_velocity(_cams: &Query<&Transform>, ctx: &CtxItem) -> Vec3 {
+fn calculate_wish_velocity(ctx: &CtxItem) -> Vec3 {
     let movement = ctx.input.last_movement.unwrap_or_default();
     let mut forward = Vec3::from(ctx.state.orientation.forward());
     forward.y = 0.0;
@@ -1208,7 +1206,7 @@ fn calculate_wish_velocity(_cams: &Query<&Transform>, ctx: &CtxItem) -> Vec3 {
 }
 
 #[must_use]
-fn calculate_3d_wish_velocity(_cams: &Query<&Transform>, ctx: &CtxItem) -> Vec3 {
+fn calculate_3d_wish_velocity(ctx: &CtxItem) -> Vec3 {
     let movement = ctx.input.last_movement.unwrap_or_default();
     let forward = ctx.state.orientation.forward();
     let right = ctx.state.orientation.right();
