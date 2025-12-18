@@ -42,7 +42,7 @@ fn main() -> AppExit {
                         #[cfg(not(target_arch = "wasm32"))]
                         resolution: WindowResolution::new(1920, 1080),
                         fit_canvas_to_parent: true,
-                        #[cfg(not(target_arch = "wasm32"))]
+                        #[cfg(all(not(target_arch = "wasm32"), not(target_os = "macos")))]
                         present_mode: bevy::window::PresentMode::Mailbox,
                         ..default()
                     }
