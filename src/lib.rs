@@ -289,7 +289,7 @@ impl CharacterController {
             Rotation::default(),
             crouching_collider.clone(),
         )]);
-        
+
         state.crouching_collider = Collider::compound(vec![(
             Vec3::Y * (crouch_height - standing_height) / 2.0,
             Rotation::default(),
