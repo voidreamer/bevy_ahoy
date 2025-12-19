@@ -5,7 +5,7 @@ use bevy::{
     image::{ImageAddressMode, ImageSampler, ImageSamplerDescriptor},
     input::common_conditions::input_just_pressed,
     prelude::*,
-    window::{CursorGrabMode, CursorOptions, PresentMode},
+    window::{CursorGrabMode, CursorOptions},
 };
 use bevy_ahoy::{PickupHoldConfig, PickupPullConfig, prelude::*};
 use bevy_enhanced_input::prelude::{Press, *};
@@ -27,7 +27,8 @@ fn main() -> AppExit {
                 })
                 .set(WindowPlugin {
                     primary_window: Window {
-                        present_mode: PresentMode::Mailbox,
+                        #[cfg(all(not(target_arch = "wasm32"), not(target_os = "macos")))]
+                        present_mode: bevy::window::PresentMode::Mailbox,
                         ..default()
                     }
                     .into(),
