@@ -14,6 +14,7 @@ use bevy_trenchbroom_avian::AvianPhysicsBackend;
 use core::ops::Deref;
 
 use crate::util::ExampleUtilPlugin;
+use std::time::Duration;
 
 mod util;
 
@@ -75,6 +76,10 @@ fn main() -> AppExit {
         )
         .add_systems(FixedUpdate, move_trains)
         .add_observer(spawn_player)
+        // NPC Stuff
+        .add_input_context::<NPC>()
+        .add_systems(Startup, spawn_npc)
+        .add_systems(Update, update_npc)
         .run()
 }
 
@@ -378,4 +383,110 @@ fn on_add_water(mut world: DeferredWorld, ctx: HookContext) {
         .commands()
         .entity(ctx.entity)
         .insert(bevy_ahoy::prelude::Water { speed });
+}
+
+//NPC Stuff
+const NPC_SPAWN_POINT: Vec3 = Vec3::new(-55.0, 45.0, 1.0);
+
+#[derive(Component, Default)]
+#[component(on_add = NPC::on_add)]
+struct NPC {
+    step: usize,
+    timer: Timer,
+}
+
+impl NPC {
+    fn on_add(mut world: DeferredWorld, ctx: HookContext) {
+        world.commands().entity(ctx.entity).insert(actions!(NPC[
+            (
+                Action::<GlobalMovement>::new(),
+                ActionMock {
+                    state: ActionState::Fired,
+                    value: Vec3::ZERO.into(),
+                    span: Duration::from_secs(2).into(),
+                    enabled: false
+                }
+            ),
+            (
+                Action::<Jump>::new(),
+                ActionMock {
+                    state: ActionState::Fired,
+                    value: true.into(),
+                    span: Duration::from_secs(2).into(),
+                    enabled: false
+                }
+            ),
+        ]));
+    }
+}
+
+fn spawn_npc(mut commands: Commands) {
+    commands
+        .spawn(Transform::from_translation(NPC_SPAWN_POINT))
+        .insert((
+            CharacterController::default(),
+            CollisionLayers::new(CollisionLayer::Player, LayerMask::ALL),
+            RigidBody::Kinematic,
+            Collider::cylinder(0.7, 1.8),
+            Mass(90.0),
+            NPC::default(),
+        ));
+}
+
+fn update_npc(
+    time: Res<Time>,
+    mut npcs: Query<(&mut NPC, &Actions<NPC>)>,
+    mut action_mocks: Query<&mut ActionMock>,
+    global_movements: Query<(), With<Action<GlobalMovement>>>,
+    jumps: Query<(), With<Action<Jump>>>,
+) {
+    for (mut npc, actions) in &mut npcs {
+        npc.timer.tick(time.delta());
+        if npc.timer.is_finished() {
+            if npc.timer.duration() != Duration::ZERO {
+                npc.step += 1;
+            }
+            //brain durations
+            let duration = match npc.step {
+                0..=4 => 1.0,
+                5 | 7 | 9 => 0.2,
+                6 | 8 | 10 => 0.8,
+                _ => {
+                    npc.step = 0;
+                    1.0
+                }
+            };
+            npc.timer.set_duration(Duration::from_secs_f32(duration));
+            npc.timer.reset();
+        }
+
+        //brain sequences : front, back, left, right, stop, jump*3
+        let (move_vec, jump) = match npc.step {
+            0 => (Vec3::NEG_Z, false),
+            1 => (Vec3::Z, false),
+            2 => (Vec3::NEG_X, false),
+            3 => (Vec3::X, false),
+            4 => (Vec3::ZERO, false),
+            5 => (Vec3::ZERO, true),
+            6 => (Vec3::ZERO, false),
+            7 => (Vec3::ZERO, true),
+            8 => (Vec3::ZERO, false),
+            9 => (Vec3::ZERO, true),
+            10 => (Vec3::ZERO, false),
+            _ => (Vec3::ZERO, false),
+        };
+
+        for action_entity in actions {
+            if let Ok(mut mock) = action_mocks.get_mut(action_entity) {
+                if global_movements.contains(action_entity) {
+                    mock.enabled = move_vec != Vec3::ZERO;
+                    if mock.enabled {
+                        mock.value = move_vec.into();
+                    }
+                } else if jumps.contains(action_entity) {
+                    mock.enabled = jump;
+                }
+            }
+        }
+    }
 }
