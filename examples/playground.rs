@@ -443,9 +443,7 @@ impl Npc {
 }
 
 fn spawn_npc(mut commands: Commands) {
-    commands
-        .spawn(Transform::from_translation(NPC_SPAWN_POINT))
-        .insert((Npc::default(),));
+    commands.spawn((Npc::default(), Transform::from_translation(NPC_SPAWN_POINT)));
 }
 
 fn update_npc(
