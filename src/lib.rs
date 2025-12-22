@@ -242,25 +242,22 @@ impl Default for CharacterController {
 impl CharacterController {
     pub fn on_add(mut world: DeferredWorld, ctx: HookContext) {
         let has_collider = world.entity(ctx.entity).contains::<Collider>();
-        let has_constructor = world.entity(ctx.entity).contains::<ColliderConstructor>();
 
         if has_collider {
             let entity = ctx.entity;
             world.commands().queue(move |world: &mut World| {
                 world.run_system_cached_with(setup_collider, entity)
             });
-        } else if has_constructor {
+        } else {
             world
                 .commands()
                 .entity(ctx.entity)
-                .observe(on_collider_ready);
-        } else {
-            panic!("`CharacterController` requires a `Collider` or `ColliderConstructor`");
+                .observe(on_insert_collider);
         }
     }
 }
 
-fn on_collider_ready(trigger: On<ColliderConstructorReady>, mut commands: Commands) {
+fn on_insert_collider(trigger: On<Insert, Collider>, mut commands: Commands) {
     commands.run_system_cached_with(setup_collider, trigger.entity);
 }
 
