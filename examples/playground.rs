@@ -1,4 +1,4 @@
-use avian3d::{collision::collider::trimesh_builder::TrimeshBuilder, prelude::*};
+use avian3d::prelude::*;
 use bevy::{
     ecs::{lifecycle::HookContext, world::DeferredWorld},
     gltf::GltfPlugin,
@@ -404,7 +404,7 @@ fn on_add_ice(mut world: DeferredWorld, ctx: HookContext) {
 }
 
 //NPC Stuff
-const NPC_SPAWN_POINT: Vec3 = Vec3::new(-55.0, 45.0, 1.0);
+const NPC_SPAWN_POINT: Vec3 = Vec3::new(-55.0, 55.0, 1.0);
 
 #[derive(Component, Default)]
 #[component(on_add = Npc::on_add)]
@@ -429,7 +429,10 @@ impl Npc {
         };
         let mesh = world
             .resource_mut::<Assets<Mesh>>()
-            .add(TrimeshBuilder::new(collider).build().unwrap());
+            .add(bevy::math::primitives::Cylinder::new(
+                collider.as_cylinder().unwrap().radius,
+                collider.as_cylinder().unwrap().half_height * 2.0,
+            ));
         let material = world
             .resource_mut::<Assets<StandardMaterial>>()
             .add(Color::WHITE);
