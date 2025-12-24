@@ -124,7 +124,11 @@ fn run_kcc(
             }
         }
 
+        let was_grounded = ctx.state.grounded.is_some();
         update_grounded(&move_and_slide, &colliders, &time, &mut ctx);
+        if was_grounded {
+            handle_climbdown(wish_velocity, &move_and_slide, &time, &mut ctx);
+        }
         validate_velocity(&mut ctx);
 
         if ctx.water.level <= WaterLevel::Feet {
@@ -802,6 +806,50 @@ fn available_mantle_height(
         height_left: mantle_height,
         wall_entity: hit.entity,
     })
+}
+
+fn handle_climbdown(
+    wish_velocity: Vec3,
+    move_and_slide: &MoveAndSlide,
+    time: &Time,
+    ctx: &mut CtxItem,
+) {
+    if ctx.state.grounded.is_some() {
+        return;
+    }
+    let Some(last_movement) = ctx.input.last_movement else {
+        return;
+    };
+    if last_movement.y >= 0.0 {
+        return;
+    }
+    let Some(climbdown_time) = ctx.input.climbdown.clone() else {
+        return;
+    };
+    if climbdown_time.elapsed() > ctx.cfg.mantle_input_buffer {
+        return;
+    }
+    // step down
+    let cast_dir = Dir3::NEG_Y;
+    let cast_len = ctx.cfg.crane_height;
+    if cast_move(cast_dir * cast_len, move_and_slide, ctx).is_some() {
+        return;
+    };
+    let original_position = ctx.transform.translation;
+    ctx.transform.translation += cast_dir * cast_len;
+
+    let Some(mantle_height) = available_mantle_height(-wish_velocity, time, move_and_slide, ctx)
+    else {
+        ctx.transform.translation = original_position;
+        return;
+    };
+
+    ctx.input.craned = None;
+    ctx.input.mantled = None;
+    ctx.input.jumped = None;
+    ctx.input.climbdown = None;
+
+    ctx.state.mantle_progress = Some(mantle_height);
 }
 
 fn move_character(time: &Time, move_and_slide: &MoveAndSlide, ctx: &mut CtxItem) {

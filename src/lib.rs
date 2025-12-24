@@ -19,8 +19,8 @@ pub mod prelude {
         AhoyPlugin, AhoySystems, CharacterController, PickupConfig,
         camera::{CharacterControllerCamera, CharacterControllerCameraOf},
         input::{
-            Crane, Crouch, DropObject, GlobalMovement, Jump, Mantle, Movement, PullObject,
-            RotateCamera, SwimUp, Tac, ThrowObject, YankCamera,
+            Climbdown, Crane, Crouch, DropObject, GlobalMovement, Jump, Mantle, Movement,
+            PullObject, RotateCamera, SwimUp, Tac, ThrowObject, YankCamera,
         },
         pickup,
         water::{Water, WaterLevel, WaterState},
@@ -162,6 +162,7 @@ pub struct CharacterController {
     pub jump_crane_chain_time: Duration,
     pub crane_input_buffer: Duration,
     pub mantle_input_buffer: Duration,
+    pub climbdown_input_buffer: Duration,
     pub min_step_ledge_space: f32,
     pub min_crane_ledge_space: f32,
     pub min_mantle_ledge_space: f32,
@@ -224,6 +225,7 @@ impl Default for CharacterController {
             jump_crane_chain_time: Duration::from_millis(140),
             crane_input_buffer: Duration::from_millis(200),
             mantle_input_buffer: Duration::from_millis(50),
+            climbdown_input_buffer: Duration::from_millis(150),
             crane_height: 1.5,
             mantle_height: 1.0,
             crane_speed: 11.0,
@@ -231,7 +233,7 @@ impl Default for CharacterController {
             min_ledge_grab_space: Cuboid::new(0.2, 0.1, 0.2),
             climb_pull_up_height: 0.3,
             max_ledge_grab_distance: 0.3,
-            climb_reverse_sin: 20.0_f32.to_radians().sin(),
+            climb_reverse_sin: 40.0_f32.to_radians().sin(),
             climb_sensitivity: 2.5,
         }
     }
