@@ -634,21 +634,15 @@ fn available_ledge_height(
     let cast_len = ledge_height;
     let hit = cast_move(cast_dir * cast_len, move_and_slide, ctx);
 
-    // If this doesn't hit, our climb was actually going through geometry. Bail.
-    let Some(hit) = hit else {
-        ctx.transform.translation = original_position;
-        ctx.velocity.0 = original_velocity;
-        return None;
-    };
-    if hit.normal1.y < ctx.cfg.min_walk_cos {
-        ctx.transform.translation = original_position;
-        ctx.velocity.0 = original_velocity;
-        return None;
-    }
-
     // Reset KCC from speculative climb to actual current state
     ctx.transform.translation = original_position;
     ctx.velocity.0 = original_velocity;
+
+    // If this doesn't hit, our climb was actually going through geometry. Bail.
+    let hit = hit?;
+    if hit.normal1.y < ctx.cfg.min_walk_cos {
+        return None;
+    }
 
     Some(ledge_height)
 }
@@ -757,7 +751,6 @@ fn available_mantle_height(
         ctx.velocity.0 = original_velocity;
         return None;
     };
-    ctx.transform.translation += cast_dir * down_dist;
 
     let ledge_height = up_dist - down_dist;
 
