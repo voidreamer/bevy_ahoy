@@ -438,9 +438,7 @@ fn handle_mantle_movement(
     };
 
     ctx.velocity.0 = Vec3::ZERO;
-    if wish_velocity.length_squared() < 0.001 {
-        return;
-    };
+
     let Some((_wall_point, wall_normal)) =
         closest_wall_normal(ctx.cfg.max_ledge_grab_distance, move_and_slide, ctx)
     else {
@@ -467,7 +465,7 @@ fn handle_mantle_movement(
     }
 
     let climb_dir = Vec3::Y;
-    let wish_y = calc_climb_factor(ctx);
+    let wish_y = calc_climb_factor(ctx, wish_velocity);
 
     let mut climb_dist =
         (ctx.cfg.mantle_speed * time.delta_secs() * wish_y).min(mantle.height_left);
@@ -494,7 +492,11 @@ fn handle_mantle_movement(
     }
 }
 
-fn calc_climb_factor(ctx: &CtxItem) -> f32 {
+fn calc_climb_factor(ctx: &CtxItem, wish_velocity: Vec3) -> f32 {
+    // TODO: maybe do something smarter?
+    if wish_velocity.length_squared() < 0.01 {
+        return 0.0;
+    }
     // positive when looking at the wall or above it, negative when looking down
     let movement = ctx.input.last_movement.unwrap_or_default().y;
     let cos = (forward(ctx.state.orientation) * movement.abs()).y;
