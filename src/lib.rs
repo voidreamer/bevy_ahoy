@@ -284,6 +284,47 @@ impl CharacterController {
     }
 }
 
+/// The look direction for the character.
+///
+/// Usually, this is populated by the camera.
+#[derive(Component, Clone, Reflect, Debug, Default)]
+#[reflect(Component)]
+pub struct CharacterLook {
+    /// The yaw the character is looking at (relative to the world).
+    pub yaw: f32,
+    /// The pitch the character is looking at (relative to the character).
+    ///
+    /// For normal movement, this is not necessary, but for actions like swimming, this affects the
+    /// direction the character will swim in.
+    pub pitch: f32,
+}
+
+impl CharacterLook {
+    /// Converts a quaternion into the corresponding look values.
+    ///
+    /// Usually this `quat` comes from the camera.
+    pub fn from_quat(quat: Quat) -> Self {
+        let (yaw, pitch, _) = quat.to_euler(EulerRot::YXZ);
+        Self { yaw, pitch }
+    }
+
+    /// Applies this look direction to `quat`.
+    ///
+    /// This preserves the roll of `quat`.
+    pub fn apply_to_quat(&self, quat: &mut Quat) {
+        let (_, _, roll) = quat.to_euler(EulerRot::YXZ);
+        *quat = Quat::from_euler(EulerRot::YXZ, self.yaw, self.pitch, roll);
+    }
+
+    /// Creates a [`Quat`] corresponding to this look direction.
+    ///
+    /// Unlike [`Self::apply_to_quat`], this does not mutate an existing [`Quat`], so there's no
+    /// roll to preserve.
+    pub fn to_quat(&self) -> Quat {
+        Quat::from_euler(EulerRot::YXZ, self.yaw, self.pitch, 0.0)
+    }
+}
+
 fn on_insert_collider(trigger: On<Insert, Collider>, mut commands: Commands) {
     commands.run_system_cached_with(setup_collider, trigger.entity);
 }

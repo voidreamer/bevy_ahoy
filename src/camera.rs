@@ -3,7 +3,10 @@ use std::{f32::consts::TAU, time::Duration};
 use avian_pickup::actor::AvianPickupActor;
 use bevy_ecs::{lifecycle::HookContext, relationship::Relationship, world::DeferredWorld};
 
-use crate::{CharacterControllerDerivedProps, CharacterControllerState, prelude::*};
+use crate::{
+    CharacterControllerDerivedProps, CharacterControllerState, CharacterLook,
+    kcc::spin_character_look, prelude::*,
+};
 
 pub struct AhoyCameraPlugin;
 
@@ -11,7 +14,14 @@ impl Plugin for AhoyCameraPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             RunFixedMainLoop,
-            sync_camera_transform.after(TransformEasingSystems::UpdateEasingTick),
+            (
+                copy_camera_to_character_look.in_set(RunFixedMainLoopSystems::BeforeFixedMainLoop),
+                sync_camera_transform.after(TransformEasingSystems::UpdateEasingTick),
+            ),
+        )
+        .add_systems(
+            Update,
+            copy_character_look_to_camera.after(spin_character_look),
         )
         .add_observer(rotate_camera)
         .add_observer(yank_camera);
@@ -61,6 +71,7 @@ impl CharacterControllerCameraOf {
 
 #[derive(Component, Clone, Copy, Debug)]
 #[relationship_target(relationship = CharacterControllerCameraOf)]
+#[require(CharacterLook)]
 pub struct CharacterControllerCamera(Entity);
 
 impl CharacterControllerCamera {
@@ -129,6 +140,31 @@ pub(crate) fn sync_camera_transform(
                 camera_transform.translation.y = new_translation.y;
             }
         }
+    }
+}
+
+fn copy_camera_to_character_look(
+    mut character_looks: Query<(&CharacterControllerCamera, &mut CharacterLook)>,
+    transforms: Query<&Transform>,
+) {
+    for (camera, mut character_look) in &mut character_looks {
+        let Ok(transform) = transforms.get(camera.get()) else {
+            continue;
+        };
+
+        *character_look = CharacterLook::from_quat(transform.rotation);
+    }
+}
+
+fn copy_character_look_to_camera(
+    cameras: Query<(&CharacterLook, &CharacterControllerCamera)>,
+    mut transforms: Query<&mut Transform>,
+) {
+    for (character_look, camera) in &cameras {
+        let Ok(mut transform) = transforms.get_mut(camera.get()) else {
+            continue;
+        };
+        character_look.apply_to_quat(&mut transform.rotation);
     }
 }
 

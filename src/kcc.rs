@@ -11,7 +11,7 @@ use tracing::warn;
 
 use crate::{
     CharacterControllerDerivedProps, CharacterControllerOutput, CharacterControllerState,
-    MantleOutput, MantleState, input::AccumulatedInput, prelude::*,
+    CharacterLook, MantleOutput, MantleState, input::AccumulatedInput, prelude::*,
 };
 
 pub struct AhoyKccPlugin {
@@ -21,7 +21,7 @@ pub struct AhoyKccPlugin {
 impl Plugin for AhoyKccPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(self.schedule, run_kcc.in_set(AhoySystems::MoveCharacters))
-            .add_systems(Update, spin_cams);
+            .add_systems(Update, spin_character_look);
     }
 }
 
@@ -36,7 +36,7 @@ struct Ctx {
     input: Write<AccumulatedInput>,
     cfg: Read<CharacterController>,
     water: Read<WaterState>,
-    cam: Option<Read<CharacterControllerCamera>>,
+    look: Option<Read<CharacterLook>>,
 }
 
 #[derive(QueryData)]
@@ -59,7 +59,6 @@ struct RigidBodyComponents {
 
 fn run_kcc(
     mut kccs: Query<Ctx>,
-    cams: Query<&Transform, Without<CharacterController>>,
     time: Res<Time>,
     move_and_slide: MoveAndSlide,
     // TODO: allow this to be other KCCs
@@ -91,9 +90,8 @@ fn run_kcc(
         }
 
         ctx.state.orientation = ctx
-            .cam
-            .and_then(|e| Option::<&Transform>::copied(cams.get(e.get()).ok()))
-            .map(|transform| transform.rotation)
+            .look
+            .map(CharacterLook::to_quat)
             .unwrap_or(ctx.transform.rotation);
 
         let wish_velocity = calculate_wish_velocity(&ctx);
@@ -1348,21 +1346,20 @@ fn is_intersecting(move_and_slide: &MoveAndSlide, waters: &Query<Entity>, ctx: &
     intersecting
 }
 
-// TODO: this should rotate the KCC, not the cams. The cams can then inherit that rotation inside the camera controller module.
-fn spin_cams(
-    kccs: Query<Ctx>,
-    mut cams: Query<&mut Transform, Without<CharacterController>>,
+pub(crate) fn spin_character_look(
+    mut kccs: Query<(&CharacterControllerState, &mut CharacterLook)>,
     time: Res<Time>,
 ) {
-    for ctx in &kccs {
-        if ctx.state.grounded.is_some()
-            && let Some(mut cam) = ctx.cam.and_then(|cam| cams.get_mut(cam.get()).ok())
-        {
-            cam.rotate_axis(
-                Dir3::Y,
-                ctx.state.platform_angular_velocity.y * time.delta_secs(),
-            );
+    for (state, mut look) in &mut kccs {
+        if state.grounded.is_none() {
+            continue;
         }
+        // Note: we're doing this using Quats (instead of just adding to the yaw) to avoid dealing
+        // wrap around of angles.
+        *look = CharacterLook::from_quat(
+            Quat::from_rotation_y(state.platform_angular_velocity.y * time.delta_secs())
+                * look.to_quat(),
+        );
     }
 }
 
