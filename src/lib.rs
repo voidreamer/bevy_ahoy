@@ -27,6 +27,11 @@ pub mod prelude {
     };
 }
 
+pub use crate::{
+    camera::AhoyCameraPlugin, dynamics::AhoyDynamicPlugin,
+    fixed_update_utils::AhoyFixedUpdateUtilsPlugin, input::AhoyInputPlugin, kcc::AhoyKccPlugin,
+    pickup_glue::AhoyPickupGluePlugin, water::AhoyWaterPlugin,
+};
 use crate::{input::AccumulatedInput, prelude::*};
 use avian_pickup::AvianPickupPlugin;
 pub use avian_pickup::{
@@ -41,6 +46,7 @@ use avian3d::{
     character_controller::move_and_slide::MoveHitData,
     parry::shape::{Capsule, SharedShape},
 };
+use bevy_app::PluginGroupBuilder;
 use bevy_ecs::{
     intern::Interned, lifecycle::HookContext, relationship::RelationshipSourceCollection as _,
     schedule::ScheduleLabel, world::DeferredWorld,
@@ -57,13 +63,16 @@ mod kcc;
 mod pickup_glue;
 mod water;
 
-/// Also requires you to add [`PhysicsPlugins`] and [`EnhancedInputPlugin`] to work properly.
-pub struct AhoyPlugin {
+/// Plugin group for Ahoy's internal plugins.
+///
+/// It requires you to add [`PhysicsPlugins`] and [`EnhancedInputPlugin`] to work properly.
+/// Also adds [`AvianPickupPlugin`].
+pub struct AhoyPlugins {
     schedule: Interned<dyn ScheduleLabel>,
 }
 
-impl AhoyPlugin {
-    /// Create a new plugin in the given schedule. The default is [`FixedPostUpdate`].
+impl AhoyPlugins {
+    /// Create a new plugin group in the given schedule. The default is [`FixedPostUpdate`].
     pub fn new(schedule: impl ScheduleLabel) -> Self {
         Self {
             schedule: schedule.intern(),
@@ -71,7 +80,7 @@ impl AhoyPlugin {
     }
 }
 
-impl Default for AhoyPlugin {
+impl Default for AhoyPlugins {
     fn default() -> Self {
         Self {
             schedule: FixedPostUpdate.intern(),
@@ -79,7 +88,33 @@ impl Default for AhoyPlugin {
     }
 }
 
-impl Plugin for AhoyPlugin {
+impl PluginGroup for AhoyPlugins {
+    fn build(self) -> PluginGroupBuilder {
+        PluginGroupBuilder::start::<Self>()
+            .add(AhoySchedulePlugin {
+                schedule: self.schedule,
+            })
+            .add(AhoyCameraPlugin)
+            .add(AhoyInputPlugin)
+            .add(AhoyKccPlugin {
+                schedule: self.schedule,
+            })
+            .add(AhoyWaterPlugin)
+            .add(AhoyFixedUpdateUtilsPlugin)
+            .add(AhoyPickupGluePlugin)
+            .add(AhoyDynamicPlugin {
+                schedule: self.schedule,
+            })
+            .add(AvianPickupPlugin::default())
+    }
+}
+
+/// Plugin to setup schedule for [`AhoySystems`].
+pub struct AhoySchedulePlugin {
+    pub schedule: Interned<dyn ScheduleLabel>,
+}
+
+impl Plugin for AhoySchedulePlugin {
     fn build(&self, app: &mut App) {
         app.configure_sets(
             self.schedule,
@@ -89,17 +124,7 @@ impl Plugin for AhoyPlugin {
             )
                 .chain()
                 .before(PhysicsSystems::First),
-        )
-        .add_plugins((
-            camera::plugin,
-            input::plugin,
-            kcc::plugin(self.schedule),
-            water::plugin,
-            fixed_update_utils::plugin,
-            pickup_glue::plugin,
-            dynamics::plugin(self.schedule),
-            AvianPickupPlugin::default(),
-        ));
+        );
     }
 }
 

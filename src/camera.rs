@@ -5,13 +5,17 @@ use bevy_ecs::{lifecycle::HookContext, relationship::Relationship, world::Deferr
 
 use crate::{CharacterControllerDerivedProps, CharacterControllerState, prelude::*};
 
-pub(super) fn plugin(app: &mut App) {
-    app.add_systems(
-        RunFixedMainLoop,
-        sync_camera_transform.after(TransformEasingSystems::UpdateEasingTick),
-    )
-    .add_observer(rotate_camera)
-    .add_observer(yank_camera);
+pub struct AhoyCameraPlugin;
+
+impl Plugin for AhoyCameraPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_systems(
+            RunFixedMainLoop,
+            sync_camera_transform.after(TransformEasingSystems::UpdateEasingTick),
+        )
+        .add_observer(rotate_camera)
+        .add_observer(yank_camera);
+    }
 }
 
 #[derive(Component, Clone, Copy, Debug)]

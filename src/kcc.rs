@@ -14,9 +14,13 @@ use crate::{
     MantleOutput, MantleState, input::AccumulatedInput, prelude::*,
 };
 
-pub(super) fn plugin(schedule: Interned<dyn ScheduleLabel>) -> impl Fn(&mut App) {
-    move |app: &mut App| {
-        app.add_systems(schedule, run_kcc.in_set(AhoySystems::MoveCharacters))
+pub struct AhoyKccPlugin {
+    pub schedule: Interned<dyn ScheduleLabel>,
+}
+
+impl Plugin for AhoyKccPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_systems(self.schedule, run_kcc.in_set(AhoySystems::MoveCharacters))
             .add_systems(Update, spin_cams);
     }
 }

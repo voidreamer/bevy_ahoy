@@ -3,9 +3,13 @@ use bevy_ecs::relationship::Relationship as _;
 
 use crate::prelude::*;
 
-pub(super) fn plugin(app: &mut App) {
-    app.add_observer(filter_out_picked_up_prop)
-        .add_observer(filter_in_unpicked_prop);
+pub struct AhoyPickupGluePlugin;
+
+impl Plugin for AhoyPickupGluePlugin {
+    fn build(&self, app: &mut App) {
+        app.add_observer(filter_out_picked_up_prop)
+            .add_observer(filter_in_unpicked_prop);
+    }
 }
 
 fn filter_out_picked_up_prop(

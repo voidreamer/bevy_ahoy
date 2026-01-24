@@ -17,7 +17,7 @@ fn main() -> AppExit {
             DefaultPlugins,
             PhysicsPlugins::default(),
             EnhancedInputPlugin,
-            AhoyPlugin::default(),
+            AhoyPlugins::default(),
             ExampleUtilPlugin,
         ))
         .add_input_context::<PlayerInput>()

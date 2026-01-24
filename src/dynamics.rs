@@ -2,10 +2,14 @@ use bevy_ecs::{intern::Interned, schedule::ScheduleLabel};
 
 use crate::{CharacterControllerOutput, prelude::*};
 
-pub(super) fn plugin(schedule: Interned<dyn ScheduleLabel>) -> impl Fn(&mut App) {
-    move |app: &mut App| {
+pub struct AhoyDynamicPlugin {
+    pub schedule: Interned<dyn ScheduleLabel>,
+}
+
+impl Plugin for AhoyDynamicPlugin {
+    fn build(&self, app: &mut App) {
         app.add_systems(
-            schedule,
+            self.schedule,
             apply_forces.in_set(AhoySystems::ApplyForcesToDynamicRigidBodies),
         );
     }

@@ -1,5 +1,16 @@
 use crate::{CharacterControllerState, prelude::*};
 
+pub struct AhoyWaterPlugin;
+
+impl Plugin for AhoyWaterPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_systems(
+            FixedUpdate,
+            update_water.before(AhoySystems::MoveCharacters),
+        );
+    }
+}
+
 #[derive(Component, Default, Copy, Reflect, Clone, Debug)]
 #[reflect(Component)]
 pub struct WaterState {
@@ -21,13 +32,6 @@ pub enum WaterLevel {
 #[reflect(Component)]
 pub struct Water {
     pub speed: f32,
-}
-
-pub(super) fn plugin(app: &mut App) {
-    app.add_systems(
-        FixedUpdate,
-        update_water.before(AhoySystems::MoveCharacters),
-    );
 }
 
 fn update_water(

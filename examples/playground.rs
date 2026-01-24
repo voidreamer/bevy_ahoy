@@ -46,7 +46,7 @@ fn main() -> AppExit {
                 }),
             PhysicsPlugins::default(),
             EnhancedInputPlugin,
-            AhoyPlugin::default(),
+            AhoyPlugins::default(),
             TrenchBroomPlugins(
                 TrenchBroomConfig::new("bevy_ahoy")
                     .default_solid_scene_hooks(|| {

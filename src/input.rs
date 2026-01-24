@@ -7,26 +7,30 @@ use crate::prelude::*;
 
 use crate::fixed_update_utils::did_fixed_timestep_run_this_frame;
 
-pub(super) fn plugin(app: &mut App) {
-    app.add_observer(apply_movement)
-        .add_observer(apply_jump)
-        .add_observer(apply_global_movement)
-        .add_observer(apply_tac)
-        .add_observer(apply_crouch)
-        .add_observer(apply_swim_up)
-        .add_observer(apply_drop)
-        .add_observer(apply_pull)
-        .add_observer(apply_throw)
-        .add_observer(apply_crane)
-        .add_observer(apply_mantle)
-        .add_observer(apply_climbdown)
-        .add_systems(
-            RunFixedMainLoop,
-            clear_accumulated_input
-                .run_if(did_fixed_timestep_run_this_frame)
-                .in_set(RunFixedMainLoopSystems::AfterFixedMainLoop),
-        )
-        .add_systems(PreUpdate, tick_timers.in_set(EnhancedInputSystems::Update));
+pub struct AhoyInputPlugin;
+
+impl Plugin for AhoyInputPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_observer(apply_movement)
+            .add_observer(apply_jump)
+            .add_observer(apply_global_movement)
+            .add_observer(apply_tac)
+            .add_observer(apply_crouch)
+            .add_observer(apply_swim_up)
+            .add_observer(apply_drop)
+            .add_observer(apply_pull)
+            .add_observer(apply_throw)
+            .add_observer(apply_crane)
+            .add_observer(apply_mantle)
+            .add_observer(apply_climbdown)
+            .add_systems(
+                RunFixedMainLoop,
+                clear_accumulated_input
+                    .run_if(did_fixed_timestep_run_this_frame)
+                    .in_set(RunFixedMainLoopSystems::AfterFixedMainLoop),
+            )
+            .add_systems(PreUpdate, tick_timers.in_set(EnhancedInputSystems::Update));
+    }
 }
 
 #[derive(Debug, InputAction)]
