@@ -10,6 +10,7 @@
 > To ensure it works you'll need to depend on the newest version from git:
 > ```toml
 > [dependencies]
+> bevy_ahoy = { version = "0.0.3", git = "https://github.com/janhohenheim/bevy_ahoy" }
 > avian3d = { version = "0.6.0-dev", git = "https://github.com/avianphysics/avian" }
 > ```
 
