@@ -35,6 +35,9 @@ bevy_framepace = { version = "0.21.0", git = "https://github.com/aevyrie/bevy_fr
 bevy_fix_cursor_unlock_web = "0.3.0"
 wasm-bindgen = "=0.2.108"
 
+[target.'cfg(target_arch = "wasm32")'.dev-dependencies]
+getrandom = { version = "0.3", features = ["wasm_js"] }
+
 [package.metadata.bevy_cli.unstable]
 #web-multi-threading = true
 
