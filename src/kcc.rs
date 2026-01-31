@@ -660,9 +660,7 @@ fn available_ledge_height(
 
     // If we can get to the end pos without any hits, this is just a regular old slope on the ground.
     let end_pos = ledge_pos + cast_dir * hit.distance;
-    if cast_move(end_pos - ctx.transform.translation, move_and_slide, ctx).is_none() {
-        return None;
-    }
+    cast_move(end_pos - ctx.transform.translation, move_and_slide, ctx)?;
 
     Some(ledge_height)
 }
