@@ -16,13 +16,11 @@ pub mod prelude {
     };
 
     pub use crate::{
-        AhoyPlugins, AhoySystems, CharacterController, CharacterControllerState, PickupConfig,
+        AhoyPlugins, AhoySystems, CharacterController, CharacterControllerState,
         camera::{CharacterControllerCamera, CharacterControllerCameraOf},
         input::{
-            Climbdown, Crane, Crouch, DropObject, GlobalMovement, Jump, Mantle, Movement,
-            PullObject, RotateCamera, SwimUp, Tac, ThrowObject, YankCamera,
+            Crouch, GlobalMovement, Jump, Movement, RotateCamera, SwimUp,
         },
-        pickup,
         water::{Water, WaterLevel, WaterState},
     };
 }
@@ -30,18 +28,9 @@ pub mod prelude {
 pub use crate::{
     camera::AhoyCameraPlugin, dynamics::AhoyDynamicPlugin,
     fixed_update_utils::AhoyFixedUpdateUtilsPlugin, input::AhoyInputPlugin, kcc::AhoyKccPlugin,
-    pickup_glue::AhoyPickupGluePlugin, water::AhoyWaterPlugin,
+    water::AhoyWaterPlugin,
 };
 use crate::{input::AccumulatedInput, prelude::*};
-use avian_pickup::AvianPickupPlugin;
-pub use avian_pickup::{
-    self as pickup,
-    prelude::{
-        AvianPickupActor as PickupConfig, AvianPickupActorHoldConfig as PickupHoldConfig,
-        AvianPickupActorPullConfig as PickupPullConfig,
-        AvianPickupActorThrowConfig as PickupThrowConfig,
-    },
-};
 use avian3d::{
     character_controller::move_and_slide::MoveHitData,
     parry::shape::{Capsule, SharedShape},
@@ -60,13 +49,11 @@ mod dynamics;
 mod fixed_update_utils;
 pub mod input;
 mod kcc;
-mod pickup_glue;
 mod water;
 
 /// Plugin group for Ahoy's internal plugins.
 ///
 /// It requires you to add [`PhysicsPlugins`] and [`EnhancedInputPlugin`] to work properly.
-/// Also adds [`AvianPickupPlugin`].
 pub struct AhoyPlugins {
     schedule: Interned<dyn ScheduleLabel>,
 }
@@ -101,11 +88,9 @@ impl PluginGroup for AhoyPlugins {
             })
             .add(AhoyWaterPlugin)
             .add(AhoyFixedUpdateUtilsPlugin)
-            .add(AhoyPickupGluePlugin)
             .add(AhoyDynamicPlugin {
                 schedule: self.schedule,
             })
-            .add(AvianPickupPlugin::default())
     }
 }
 
@@ -168,41 +153,15 @@ pub struct CharacterController {
     pub gravity: f32,
     pub water_gravity: f32,
     pub step_size: f32,
-    pub crane_height: f32,
     pub crouch_speed_scale: f32,
     pub speed: f32,
     pub air_speed: f32,
     pub move_and_slide: MoveAndSlideConfig,
     pub max_speed: f32,
     pub jump_height: f32,
-    pub tac_power: f32,
-    pub tac_jump_factor: f32,
-    pub tac_input_buffer: Duration,
-    pub ledge_jump_power: f32,
-    pub ledge_jump_factor: f32,
-    pub max_tac_cos: f32,
-    pub max_air_wish_speed: f32,
-    pub tac_cooldown: Duration,
     pub unground_speed: f32,
     pub coyote_time: Duration,
     pub jump_input_buffer: Duration,
-    pub jump_crane_chain_time: Duration,
-    pub crane_input_buffer: Duration,
-    pub mantle_input_buffer: Duration,
-    pub climbdown_input_buffer: Duration,
-    pub min_step_ledge_space: f32,
-    pub min_crane_ledge_space: f32,
-    pub min_mantle_ledge_space: f32,
-    pub mantle_height: f32,
-    pub min_crane_cos: f32,
-    pub min_mantle_cos: f32,
-    pub crane_speed: f32,
-    pub mantle_speed: f32,
-    pub min_ledge_grab_space: Cuboid,
-    pub climb_pull_up_height: f32,
-    pub max_ledge_grab_distance: f32,
-    pub climb_reverse_sin: f32,
-    pub climb_sensitivity: f32,
 }
 
 impl Default for CharacterController {
@@ -232,36 +191,10 @@ impl Default for CharacterController {
             },
             max_speed: 100.0,
             jump_height: 1.8,
-            tac_power: 0.755,
-            tac_jump_factor: 1.0,
-            ledge_jump_power: 1.5,
-            ledge_jump_factor: 0.8,
-            tac_input_buffer: Duration::from_millis(150),
-            max_tac_cos: 40.0_f32.to_radians().cos(),
-            max_air_wish_speed: 0.76,
-            tac_cooldown: Duration::from_millis(300),
             unground_speed: 10.0,
             step_down_detection_distance: 0.2,
-            min_crane_cos: 50.0_f32.to_radians().cos(),
-            min_mantle_cos: 50.0_f32.to_radians().cos(),
-            min_step_ledge_space: 0.2,
-            min_crane_ledge_space: 0.35,
-            min_mantle_ledge_space: 0.5,
             coyote_time: Duration::from_millis(100),
             jump_input_buffer: Duration::from_millis(150),
-            jump_crane_chain_time: Duration::from_millis(140),
-            crane_input_buffer: Duration::from_millis(200),
-            mantle_input_buffer: Duration::from_millis(50),
-            climbdown_input_buffer: Duration::from_millis(150),
-            crane_height: 1.5,
-            mantle_height: 1.0,
-            crane_speed: 11.0,
-            mantle_speed: 5.0,
-            min_ledge_grab_space: Cuboid::new(0.2, 0.1, 0.2),
-            climb_pull_up_height: 0.3,
-            max_ledge_grab_distance: 0.3,
-            climb_reverse_sin: 40.0_f32.to_radians().sin(),
-            climb_sensitivity: 2.5,
         }
     }
 }
@@ -373,7 +306,6 @@ fn setup_collider(
         crouching_collider,
     )]);
 
-    derived.hand_collider = Collider::from(cfg.min_ledge_grab_space);
 }
 
 #[derive(Component, Clone, Reflect, Debug)]
@@ -388,16 +320,9 @@ pub struct CharacterControllerState {
     pub platform_angular_velocity: Vec3,
     pub grounded: Option<MoveHitData>,
     pub crouching: bool,
-    pub tac_velocity: f32,
     pub last_ground: Stopwatch,
-    pub last_tac: Stopwatch,
     pub last_step_up: Stopwatch,
     pub last_step_down: Stopwatch,
-    pub crane_height_left: Option<f32>,
-    /// The current state of the mantle, if a mantle is in progress.
-    ///
-    /// This is [`None`] if a mantle is not in progress.
-    pub mantle: Option<MantleState>,
 }
 
 impl Default for CharacterControllerState {
@@ -408,22 +333,13 @@ impl Default for CharacterControllerState {
             orientation: Quat::IDENTITY,
             grounded: None,
             crouching: false,
-            tac_velocity: 0.0,
             last_ground: max_stopwatch(),
-            last_tac: max_stopwatch(),
             last_step_up: max_stopwatch(),
             last_step_down: max_stopwatch(),
-            crane_height_left: None,
-            mantle: None,
         }
     }
 }
 
-/// The state of a mantle in progress.
-#[derive(Clone, Reflect, Debug)]
-pub struct MantleState {
-    pub height_left: f32,
-}
 
 fn max_stopwatch() -> Stopwatch {
     let mut watch = Stopwatch::new();
@@ -438,8 +354,6 @@ pub struct CharacterControllerDerivedProps {
     pub standing_collider: Collider,
     /// The collider for the primary movement used when the character is crouching.
     pub crouching_collider: Collider,
-    /// The collider representing the hands for mantling.
-    pub hand_collider: Collider,
 }
 
 impl CharacterControllerDerivedProps {
@@ -524,26 +438,10 @@ impl CharacterControllerDerivedProps {
 /// is also used as input in the next frame.
 #[derive(Component, Reflect, PartialEq, Debug, Default)]
 pub struct CharacterControllerOutput {
-    /// Details about an in progress mantle.
-    ///
-    /// This is [`None`] if a mantle is not in progress.
-    pub mantle: Option<MantleOutput>,
     /// The entities this character is touching.
     pub touching_entities: Vec<TouchingEntity>,
 }
 
-/// Properties computing while mantling.
-///
-/// These are properties about the mantle that are transient and are not needed for future updates.
-#[derive(Clone, Reflect, PartialEq, Debug)]
-pub struct MantleOutput {
-    /// The normal of the wall being mantled.
-    pub wall_normal: Dir3,
-    /// The position of the ledge on the wall.
-    pub ledge_position: Vec3,
-    /// The wall that is being mantled.
-    pub wall_entity: Entity,
-}
 
 /// Data related to a hit during [`MoveAndSlide::move_and_slide`].
 #[derive(Clone, Reflect, PartialEq, Debug)]

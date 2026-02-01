@@ -12,7 +12,7 @@ categories = ["game-development"]
 include = ["/src", "/license*", "/examples"]
 
 [dependencies]
-avian3d = { version = "0.6.0-dev", default-features = false, features = ["default-collider", "3d", "f32"], git = "https://github.com/avianphysics/avian" }
+avian3d = { version = "0.6.0-dev", default-features = false, features = ["default-collider", "3d", "f32", "parry-f32"], git = "https://github.com/avianphysics/avian" }
 bevy_ecs = { version = "0.18", default-features = false }
 bevy_app = { version = "0.18", default-features = false }
 bevy_derive = { version = "0.18", default-features = false }
@@ -23,7 +23,6 @@ bevy_transform = { version = "0.18", default-features = false }
 bevy_time = { version = "0.18", default-features = false }
 bevy_enhanced_input = { version = "0.22", default-features = false }
 tracing = { version = "0.1", default-features = false }
-avian_pickup = { version= "0.5.0-dev", git = "https://github.com/janhohenheim/avian_pickup" }
 
 [dev-dependencies]
 bevy = { version = "0.18", features = ["track_location", "dynamic_linking", "file_watcher"] }

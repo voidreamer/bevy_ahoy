@@ -357,24 +357,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "avian_pickup"
-version = "0.5.0-dev"
-source = "git+https://github.com/janhohenheim/avian_pickup#76acb65961213d0a30013429db4fdda8eb2ea8cb"
-dependencies = [
- "avian3d",
- "bevy_app",
- "bevy_ecs",
- "bevy_log",
- "bevy_math",
- "bevy_platform",
- "bevy_reflect",
- "bevy_time",
- "bevy_transform",
- "bevy_utils",
- "rand",
-]
-
-[[package]]
 name = "base64"
 version = "0.22.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -408,7 +390,6 @@ name = "bevy_ahoy"
 version = "0.0.3"
 dependencies = [
  "avian3d",
- "avian_pickup",
  "bevy",
  "bevy_app",
  "bevy_derive",

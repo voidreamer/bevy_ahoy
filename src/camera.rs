@@ -1,6 +1,5 @@
 use std::{f32::consts::TAU, time::Duration};
 
-use avian_pickup::actor::AvianPickupActor;
 use bevy_ecs::{lifecycle::HookContext, relationship::Relationship, world::DeferredWorld};
 
 use crate::{
@@ -23,14 +22,13 @@ impl Plugin for AhoyCameraPlugin {
             Update,
             copy_character_look_to_camera.after(spin_character_look),
         )
-        .add_observer(rotate_camera)
-        .add_observer(yank_camera);
+        .add_observer(rotate_camera);
     }
 }
 
 #[derive(Component, Clone, Copy, Debug)]
 #[relationship(relationship_target = CharacterControllerCamera)]
-#[require(AvianPickupActor, Transform)]
+#[require(Transform)]
 #[component(on_add = Self::on_add)]
 pub struct CharacterControllerCameraOf {
     #[relationship]
@@ -189,26 +187,3 @@ fn rotate_camera(
     transform.rotation = Quat::from_euler(EulerRot::YXZ, yaw, pitch, 0.0);
 }
 
-fn yank_camera(
-    trigger: On<Fire<YankCamera>>,
-    cameras: Query<&CharacterControllerCamera>,
-    camera_ofs: Query<&CharacterControllerCameraOf>,
-    time: Res<Time>,
-    mut transforms: Query<&mut Transform>,
-) {
-    let Ok(camera) = cameras.get(trigger.context) else {
-        return;
-    };
-    let Ok(camera_of) = camera_ofs.get(camera.get()) else {
-        return;
-    };
-    let Ok(mut transform) = transforms.get_mut(camera.get()) else {
-        return;
-    };
-
-    let (mut yaw, pitch, _) = transform.rotation.to_euler(EulerRot::YXZ);
-    let rotation_delta = camera_of.yank_speed * trigger.value * time.delta_secs();
-    yaw -= rotation_delta;
-
-    transform.rotation = Quat::from_euler(EulerRot::YXZ, yaw, pitch, 0.0);
-}
